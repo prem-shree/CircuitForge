@@ -25,15 +25,6 @@ npm run build      # static site in dist/
 
 You need Node 18 or newer (CI uses 22). The only dependency is `esbuild`, used at build time.
 
-## Deploying
-
-- **GitHub Pages:** push to `main`. [`.github/workflows/pages.yml`](.github/workflows/pages.yml)
-  runs the tests, builds and publishes `dist/`. Under *Settings → Pages*, set the source to
-  **GitHub Actions**.
-- **Any static host:** upload the contents of `dist/`. All paths are relative, so sub-paths work.
-- **Local file:** open `dist/index.html`. The bundle is a classic script with every symbol and
-  sample inlined, so it works over `file://`.
-
 ## Using the app
 
 | | |
