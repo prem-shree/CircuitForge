@@ -1,0 +1,31 @@
+{
+  "type": "demux",
+  "name": "Demultiplexer",
+  "category": "digital",
+  "kind": "box",
+  "label": "DEMUX",
+  "pins": {
+    "left": [
+      "D"
+    ],
+    "right": [
+      "Y0",
+      "Y1",
+      "Y2",
+      "Y3"
+    ],
+    "bottom": [
+      "S0",
+      "S1"
+    ]
+  },
+  "prefix": "U",
+  "typeAliases": [
+    "demultiplexer"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

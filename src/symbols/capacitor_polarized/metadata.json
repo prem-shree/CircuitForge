@@ -1,0 +1,45 @@
+{
+  "type": "capacitor_polarized",
+  "name": "Polarized capacitor",
+  "category": "passive",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "negative": {
+      "x": 0,
+      "y": 30,
+      "dir": "left"
+    },
+    "positive": {
+      "x": 60,
+      "y": 30,
+      "dir": "right"
+    }
+  },
+  "aliases": {
+    "1": "positive",
+    "2": "negative",
+    "+": "positive",
+    "-": "negative"
+  },
+  "body": {
+    "x": 20,
+    "y": 12,
+    "w": 33.6,
+    "h": 30.4
+  },
+  "prefix": "C",
+  "typeAliases": [
+    "electrolytic",
+    "polarized_capacitor"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Capacitor-IEEE-Polarized.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

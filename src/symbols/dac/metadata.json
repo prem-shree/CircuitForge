@@ -1,0 +1,47 @@
+{
+  "type": "dac",
+  "name": "DAC",
+  "category": "ic",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "IN": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "OUT": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "1": "IN",
+    "2": "OUT",
+    "din": "IN",
+    "aout": "OUT"
+  },
+  "body": {
+    "x": 10,
+    "y": 15,
+    "w": 40,
+    "h": 30
+  },
+  "prefix": "U",
+  "labels": "top",
+  "typeAliases": [
+    "digital_to_analog"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Miscellaneous-COM-DAC.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "type": "diode",
+  "name": "Diode",
+  "category": "semiconductor",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "anode": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "cathode": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "1": "anode",
+    "2": "cathode",
+    "a": "anode",
+    "k": "cathode",
+    "+": "anode",
+    "-": "cathode"
+  },
+  "body": {
+    "x": 20,
+    "y": 16,
+    "w": 20,
+    "h": 28
+  },
+  "prefix": "D",
+  "typeAliases": [
+    "d"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Diode-COM-Standard.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

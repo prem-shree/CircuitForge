@@ -1,0 +1,85 @@
+{
+  "type": "d_flipflop",
+  "name": "D flip-flop",
+  "category": "digital",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "D": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "in"
+    },
+    "CLK": {
+      "x": 0,
+      "y": 40,
+      "dir": "left",
+      "io": "in"
+    },
+    "Q": {
+      "x": 60,
+      "y": 20,
+      "dir": "right",
+      "io": "out"
+    },
+    "QN": {
+      "x": 60,
+      "y": 40,
+      "dir": "right",
+      "io": "out"
+    },
+    "S": {
+      "x": 30,
+      "y": 0,
+      "dir": "up",
+      "io": "in"
+    },
+    "R": {
+      "x": 30,
+      "y": 60,
+      "dir": "down",
+      "io": "in"
+    }
+  },
+  "aliases": {
+    "q̄": "QN",
+    "q_bar": "QN",
+    "qbar": "QN",
+    "nq": "QN",
+    "~q": "QN",
+    "clock": "CLK",
+    "clk": "CLK",
+    "set": "S",
+    "pre": "S",
+    "preset": "S",
+    "reset": "R",
+    "clr": "R",
+    "clear": "R"
+  },
+  "body": {
+    "x": 10,
+    "y": 5,
+    "w": 40,
+    "h": 50
+  },
+  "prefix": "U",
+  "labels": "top",
+  "required": [
+    "D",
+    "CLK"
+  ],
+  "typeAliases": [
+    "dff",
+    "flipflop_d"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/IC-COM-FlipFlop-ClockedD.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

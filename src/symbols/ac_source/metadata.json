@@ -1,0 +1,56 @@
+{
+  "type": "ac_source",
+  "name": "AC voltage source",
+  "category": "analog",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "positive": {
+      "x": 30,
+      "y": 0,
+      "dir": "up"
+    },
+    "negative": {
+      "x": 30,
+      "y": 60,
+      "dir": "down"
+    }
+  },
+  "aliases": {
+    "1": "positive",
+    "2": "negative",
+    "+": "positive",
+    "-": "negative",
+    "p": "positive",
+    "n": "negative",
+    "vcc": "positive",
+    "gnd": "negative",
+    "l": "positive"
+  },
+  "body": {
+    "x": 10,
+    "y": 10,
+    "w": 40,
+    "h": 40
+  },
+  "prefix": "V",
+  "required": [
+    "positive",
+    "negative"
+  ],
+  "source": true,
+  "typeAliases": [
+    "ac",
+    "sine_source"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Source-COM-AC.svg",
+    "modified": "redrawn vertically (positive up) from the upstream geometry",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

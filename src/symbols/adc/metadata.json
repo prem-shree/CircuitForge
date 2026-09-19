@@ -1,0 +1,47 @@
+{
+  "type": "adc",
+  "name": "ADC",
+  "category": "ic",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "IN": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "OUT": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "1": "IN",
+    "2": "OUT",
+    "ain": "IN",
+    "dout": "OUT"
+  },
+  "body": {
+    "x": 10,
+    "y": 15,
+    "w": 40,
+    "h": 30
+  },
+  "prefix": "U",
+  "labels": "top",
+  "typeAliases": [
+    "analog_to_digital"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Miscellaneous-COM-ADC.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

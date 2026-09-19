@@ -1,0 +1,26 @@
+{
+  "type": "connector",
+  "name": "Connector",
+  "category": "power",
+  "kind": "box",
+  "label": "",
+  "pins": {
+    "right": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ]
+  },
+  "prefix": "J",
+  "io": "passive",
+  "typeAliases": [
+    "header",
+    "conn"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

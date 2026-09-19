@@ -1,0 +1,29 @@
+{
+  "type": "counter",
+  "name": "Counter",
+  "category": "digital",
+  "kind": "box",
+  "label": "CTR",
+  "pins": {
+    "left": [
+      "CLK",
+      "~CLR",
+      "EN"
+    ],
+    "right": [
+      "Q0",
+      "Q1",
+      "Q2",
+      "Q3"
+    ]
+  },
+  "prefix": "U",
+  "typeAliases": [
+    "binary_counter"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}
