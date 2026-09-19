@@ -1,0 +1,50 @@
+{
+  "type": "memory",
+  "name": "Generic memory",
+  "category": "ic",
+  "kind": "box",
+  "label": "MEM",
+  "pins": {
+    "left": [
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "~CS",
+      "~OE",
+      "~WE"
+    ],
+    "right": [
+      "D0",
+      "D1",
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6",
+      "D7"
+    ],
+    "top": [
+      "VCC"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "typeAliases": [
+    "ram",
+    "rom",
+    "eeprom",
+    "sram"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

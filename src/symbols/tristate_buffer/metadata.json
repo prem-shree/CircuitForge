@@ -1,0 +1,61 @@
+{
+  "type": "tristate_buffer",
+  "name": "Tri-state buffer",
+  "category": "digital",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "A": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "Y": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    },
+    "EN": {
+      "x": 30,
+      "y": 0,
+      "dir": "up",
+      "io": "in"
+    }
+  },
+  "aliases": {
+    "1": "A",
+    "2": "Y",
+    "3": "EN",
+    "in": "A",
+    "out": "Y",
+    "input": "A",
+    "output": "Y",
+    "oe": "EN",
+    "en": "EN",
+    "enable": "EN"
+  },
+  "body": {
+    "x": 10,
+    "y": 15,
+    "w": 35,
+    "h": 30
+  },
+  "prefix": "U",
+  "labels": "right",
+  "typeAliases": [
+    "tristate",
+    "tri_state_buffer"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/IC-COM-Logic-Buffer.svg",
+    "modified": "enable pin added by CircuitForge",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

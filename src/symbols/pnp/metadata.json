@@ -1,0 +1,56 @@
+{
+  "type": "pnp",
+  "name": "PNP transistor",
+  "category": "semiconductor",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "B": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "E": {
+      "x": 40,
+      "y": 0,
+      "dir": "up"
+    },
+    "C": {
+      "x": 40,
+      "y": 60,
+      "dir": "down"
+    }
+  },
+  "aliases": {
+    "base": "B",
+    "collector": "C",
+    "emitter": "E"
+  },
+  "body": {
+    "x": 10,
+    "y": 10,
+    "w": 40,
+    "h": 40
+  },
+  "prefix": "Q",
+  "labels": "right",
+  "required": [
+    "B",
+    "C",
+    "E"
+  ],
+  "typeAliases": [
+    "bjt_pnp",
+    "pnp_transistor"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Transistor-COM-BJT-PNP.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

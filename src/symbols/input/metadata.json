@@ -1,0 +1,41 @@
+{
+  "type": "input",
+  "name": "Input terminal",
+  "category": "power",
+  "width": 40,
+  "height": 20,
+  "pins": {
+    "1": {
+      "x": 40,
+      "y": 10,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "body": {
+    "x": 0,
+    "y": 4,
+    "w": 12,
+    "h": 12
+  },
+  "terminal": "input",
+  "labels": "none",
+  "text": {
+    "x": -4,
+    "y": 14,
+    "anchor": "end",
+    "default": "$id"
+  },
+  "prefix": "IN",
+  "typeAliases": [
+    "input_terminal",
+    "in",
+    "port_in"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

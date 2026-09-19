@@ -1,0 +1,40 @@
+{
+  "type": "vcc",
+  "name": "VCC rail",
+  "category": "power",
+  "width": 40,
+  "height": 40,
+  "pins": {
+    "1": {
+      "x": 20,
+      "y": 40,
+      "dir": "down"
+    }
+  },
+  "body": {
+    "x": 8,
+    "y": 14,
+    "w": 24,
+    "h": 26
+  },
+  "rail": "power",
+  "text": {
+    "x": 20,
+    "y": 9,
+    "anchor": "middle",
+    "default": "VCC"
+  },
+  "typeAliases": [
+    "power_rail",
+    "rail",
+    "vplus",
+    "v+",
+    "supply"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

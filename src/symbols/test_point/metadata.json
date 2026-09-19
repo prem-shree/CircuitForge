@@ -1,0 +1,39 @@
+{
+  "type": "test_point",
+  "name": "Test point",
+  "category": "power",
+  "width": 20,
+  "height": 30,
+  "pins": {
+    "1": {
+      "x": 10,
+      "y": 30,
+      "dir": "down"
+    }
+  },
+  "body": {
+    "x": 4,
+    "y": 2,
+    "w": 12,
+    "h": 12
+  },
+  "labels": "none",
+  "text": {
+    "x": 18,
+    "y": 8,
+    "anchor": "start",
+    "default": "$id"
+  },
+  "prefix": "TP",
+  "typeAliases": [
+    "testpoint",
+    "tp",
+    "probe"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

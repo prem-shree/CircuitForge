@@ -1,0 +1,50 @@
+{
+  "type": "microcontroller",
+  "name": "Generic microcontroller",
+  "category": "ic",
+  "kind": "box",
+  "label": "MCU",
+  "pins": {
+    "left": [
+      "RST",
+      "XTAL1",
+      "XTAL2",
+      "PA0",
+      "PA1",
+      "PA2",
+      "PA3",
+      "PA4"
+    ],
+    "right": [
+      "PB0",
+      "PB1",
+      "PB2",
+      "PB3",
+      "PB4",
+      "PB5",
+      "PB6",
+      "PB7"
+    ],
+    "top": [
+      "VCC"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "reset": "RST",
+    "vdd": "VCC",
+    "vss": "GND"
+  },
+  "typeAliases": [
+    "mcu",
+    "micro"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

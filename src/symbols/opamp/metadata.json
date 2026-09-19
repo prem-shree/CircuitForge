@@ -1,0 +1,79 @@
+{
+  "type": "opamp",
+  "name": "Op-amp",
+  "category": "analog",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "in+": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "in"
+    },
+    "in-": {
+      "x": 0,
+      "y": 40,
+      "dir": "left",
+      "io": "in"
+    },
+    "out": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    },
+    "v+": {
+      "x": 30,
+      "y": 0,
+      "dir": "up",
+      "io": "power"
+    },
+    "v-": {
+      "x": 30,
+      "y": 60,
+      "dir": "down",
+      "io": "power"
+    }
+  },
+  "aliases": {
+    "+": "in+",
+    "-": "in-",
+    "non_inverting": "in+",
+    "inverting": "in-",
+    "inp": "in+",
+    "inn": "in-",
+    "output": "out",
+    "o": "out",
+    "vcc": "v+",
+    "vee": "v-",
+    "vs+": "v+",
+    "vs-": "v-"
+  },
+  "body": {
+    "x": 10,
+    "y": 10,
+    "w": 40,
+    "h": 40
+  },
+  "prefix": "U",
+  "labels": "topright",
+  "required": [
+    "in+",
+    "in-",
+    "out"
+  ],
+  "typeAliases": [
+    "op_amp",
+    "operational_amplifier"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/IC-COM-OpAmp.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

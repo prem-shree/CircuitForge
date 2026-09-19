@@ -1,0 +1,50 @@
+{
+  "type": "not",
+  "name": "NOT gate (inverter)",
+  "category": "digital",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "A": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "Y": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "1": "A",
+    "2": "Y",
+    "in": "A",
+    "out": "Y",
+    "input": "A",
+    "output": "Y"
+  },
+  "body": {
+    "x": 8.8,
+    "y": 15,
+    "w": 46.4,
+    "h": 30
+  },
+  "prefix": "U",
+  "labels": "top",
+  "typeAliases": [
+    "inverter",
+    "not_gate"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/IC-COM-Logic-Inverter.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

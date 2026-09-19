@@ -1,0 +1,55 @@
+{
+  "type": "jfet_p",
+  "name": "P-channel JFET",
+  "category": "semiconductor",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "G": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "S": {
+      "x": 40,
+      "y": 0,
+      "dir": "up"
+    },
+    "D": {
+      "x": 40,
+      "y": 60,
+      "dir": "down"
+    }
+  },
+  "aliases": {
+    "gate": "G",
+    "drain": "D",
+    "source": "S"
+  },
+  "body": {
+    "x": 10,
+    "y": 10,
+    "w": 40,
+    "h": 40
+  },
+  "prefix": "Q",
+  "labels": "right",
+  "required": [
+    "G",
+    "D",
+    "S"
+  ],
+  "typeAliases": [
+    "pjfet"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Transistor-COM-JFET-P.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

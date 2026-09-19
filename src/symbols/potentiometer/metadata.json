@@ -1,0 +1,47 @@
+{
+  "type": "potentiometer",
+  "name": "Potentiometer",
+  "category": "passive",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 30,
+      "dir": "left"
+    },
+    "2": {
+      "x": 60,
+      "y": 30,
+      "dir": "right"
+    },
+    "wiper": {
+      "x": 30,
+      "y": 60,
+      "dir": "down"
+    }
+  },
+  "aliases": {
+    "3": "wiper",
+    "w": "wiper"
+  },
+  "body": {
+    "x": 12.4,
+    "y": 20,
+    "w": 35.2,
+    "h": 30
+  },
+  "prefix": "RV",
+  "typeAliases": [
+    "pot"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Resistor-IEEE-Potentiometer.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

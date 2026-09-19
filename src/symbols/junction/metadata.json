@@ -1,0 +1,22 @@
+{
+  "type": "junction",
+  "name": "Junction",
+  "category": "power",
+  "kind": "virtual",
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 0,
+      "dir": "left"
+    }
+  },
+  "typeAliases": [
+    "node",
+    "dot"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "type": "nand",
+  "name": "NAND gate",
+  "category": "digital",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "A": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "in"
+    },
+    "B": {
+      "x": 0,
+      "y": 40,
+      "dir": "left",
+      "io": "in"
+    },
+    "Y": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "1": "A",
+    "2": "B",
+    "3": "Y",
+    "in1": "A",
+    "in2": "B",
+    "out": "Y",
+    "q": "Y",
+    "o": "Y",
+    "output": "Y"
+  },
+  "body": {
+    "x": 12.4,
+    "y": 15,
+    "w": 41.6,
+    "h": 30
+  },
+  "prefix": "U",
+  "labels": "top",
+  "typeAliases": [
+    "nand_gate"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/IC-COM-Logic-NAND.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+<g transform="scale(0.4) translate(0 0)">
+<g fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="4">
+        <path d="m100 75-50 31.25v-62.5L100 75zm-50 0H0m100 0h50"/>
+        <path d="M112.5 109.5 100 100V50l-12.5-9.5"/>
+    </g>
+</g>
+</svg>

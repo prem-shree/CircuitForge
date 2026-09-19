@@ -1,0 +1,39 @@
+{
+  "type": "inductor",
+  "name": "Inductor",
+  "category": "passive",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 30,
+      "dir": "left"
+    },
+    "2": {
+      "x": 60,
+      "y": 30,
+      "dir": "right"
+    }
+  },
+  "body": {
+    "x": 4.8,
+    "y": 21.6,
+    "w": 50.4,
+    "h": 9.6
+  },
+  "prefix": "L",
+  "typeAliases": [
+    "coil",
+    "l"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Inductor-COM-Air.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

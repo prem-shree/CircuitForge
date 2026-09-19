@@ -1,0 +1,55 @@
+{
+  "type": "transformer",
+  "name": "Transformer",
+  "category": "passive",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 70,
+  "pins": {
+    "p1": {
+      "x": 0,
+      "y": 10,
+      "dir": "left"
+    },
+    "p2": {
+      "x": 0,
+      "y": 60,
+      "dir": "left"
+    },
+    "s1": {
+      "x": 60,
+      "y": 10,
+      "dir": "right"
+    },
+    "s2": {
+      "x": 60,
+      "y": 60,
+      "dir": "right"
+    }
+  },
+  "aliases": {
+    "1": "p1",
+    "2": "p2",
+    "3": "s1",
+    "4": "s2",
+    "pri1": "p1",
+    "pri2": "p2",
+    "sec1": "s1",
+    "sec2": "s2"
+  },
+  "body": {
+    "x": 8,
+    "y": 6.6,
+    "w": 44,
+    "h": 56.8
+  },
+  "prefix": "T",
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Transformer-COM-Standard.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

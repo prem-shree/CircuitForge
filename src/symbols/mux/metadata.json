@@ -1,0 +1,31 @@
+{
+  "type": "mux",
+  "name": "Multiplexer",
+  "category": "digital",
+  "kind": "box",
+  "label": "MUX",
+  "pins": {
+    "left": [
+      "D0",
+      "D1",
+      "D2",
+      "D3"
+    ],
+    "right": [
+      "Y"
+    ],
+    "bottom": [
+      "S0",
+      "S1"
+    ]
+  },
+  "prefix": "U",
+  "typeAliases": [
+    "multiplexer"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

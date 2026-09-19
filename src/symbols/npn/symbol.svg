@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+<g transform="scale(0.4) translate(0 0)">
+<circle cx="75" cy="75" r="50" fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="4"/>
+    <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="4" d="M100 150v-31.25M0 75h50m0-31.25v62.5M100 0v40.5l-50 22m0 25 37.52 22.47"/>
+    <path fill="currentColor" d="m81.8 115.26 14.95.24-7.27-13.07-7.68 12.83z"/>
+</g>
+</svg>

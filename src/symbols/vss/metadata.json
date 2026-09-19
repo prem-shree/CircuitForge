@@ -1,0 +1,38 @@
+{
+  "type": "vss",
+  "name": "VSS rail",
+  "category": "power",
+  "width": 40,
+  "height": 40,
+  "pins": {
+    "1": {
+      "x": 20,
+      "y": 0,
+      "dir": "up"
+    }
+  },
+  "body": {
+    "x": 8,
+    "y": 0,
+    "w": 24,
+    "h": 26
+  },
+  "rail": "negative",
+  "text": {
+    "x": 20,
+    "y": 38,
+    "anchor": "middle",
+    "default": "VSS"
+  },
+  "typeAliases": [
+    "vee",
+    "v-",
+    "negative_rail"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

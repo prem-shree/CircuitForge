@@ -1,0 +1,24 @@
+{
+  "type": "net_label",
+  "name": "Net label",
+  "category": "power",
+  "kind": "label",
+  "rail": "label",
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 0,
+      "dir": "left"
+    }
+  },
+  "typeAliases": [
+    "label",
+    "net",
+    "netlabel"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

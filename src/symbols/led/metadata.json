@@ -1,0 +1,45 @@
+{
+  "type": "led",
+  "name": "LED",
+  "category": "semiconductor",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "anode": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "cathode": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "1": "anode",
+    "2": "cathode",
+    "a": "anode",
+    "k": "cathode",
+    "+": "anode",
+    "-": "cathode"
+  },
+  "body": {
+    "x": 20,
+    "y": 1.6,
+    "w": 38.4,
+    "h": 42.4
+  },
+  "prefix": "D",
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Diode-COM-LED.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

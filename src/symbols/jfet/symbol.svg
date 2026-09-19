@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+<g transform="scale(0.4) translate(0 0)">
+<circle cx="75" cy="75" r="50" fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="4"/>
+    <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="4" d="M0 75h56.25m0-31.25v62.5"/>
+    <path fill="currentColor" d="M56.25 75 37.5 87.5v-25L56.25 75z"/>
+    <path fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="4" d="M99.66 0v56.25H56.25M99.66 150V93.75H56.25"/>
+</g>
+</svg>

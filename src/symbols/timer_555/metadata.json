@@ -1,0 +1,59 @@
+{
+  "type": "timer_555",
+  "name": "555 timer",
+  "category": "ic",
+  "kind": "box",
+  "label": "555",
+  "pins": {
+    "left": [
+      "DIS",
+      "THR",
+      "TRIG"
+    ],
+    "right": [
+      "OUT",
+      "CV"
+    ],
+    "top": [
+      "VCC",
+      "RST"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "1": "GND",
+    "2": "TRIG",
+    "3": "OUT",
+    "4": "RST",
+    "5": "CV",
+    "6": "THR",
+    "7": "DIS",
+    "8": "VCC",
+    "trigger": "TRIG",
+    "threshold": "THR",
+    "control": "CV",
+    "ctrl": "CV",
+    "reset": "RST",
+    "discharge": "DIS",
+    "output": "OUT",
+    "vdd": "VCC"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "OUT"
+  ],
+  "typeAliases": [
+    "555",
+    "ne555",
+    "timer"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

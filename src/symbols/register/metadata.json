@@ -1,0 +1,33 @@
+{
+  "type": "register",
+  "name": "Register",
+  "category": "digital",
+  "kind": "box",
+  "label": "REG",
+  "pins": {
+    "left": [
+      "D0",
+      "D1",
+      "D2",
+      "D3",
+      "CLK",
+      "~CLR"
+    ],
+    "right": [
+      "Q0",
+      "Q1",
+      "Q2",
+      "Q3"
+    ]
+  },
+  "prefix": "U",
+  "typeAliases": [
+    "shift_register",
+    "latch_register"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "type": "encoder",
+  "name": "Encoder",
+  "category": "digital",
+  "kind": "box",
+  "label": "ENC",
+  "pins": {
+    "left": [
+      "I0",
+      "I1",
+      "I2",
+      "I3"
+    ],
+    "right": [
+      "Y0",
+      "Y1"
+    ]
+  },
+  "prefix": "U",
+  "typeAliases": [
+    "priority_encoder"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

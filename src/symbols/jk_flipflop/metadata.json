@@ -1,0 +1,74 @@
+{
+  "type": "jk_flipflop",
+  "name": "JK flip-flop",
+  "category": "digital",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "J": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "in"
+    },
+    "CLK": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "K": {
+      "x": 0,
+      "y": 40,
+      "dir": "left",
+      "io": "in"
+    },
+    "Q": {
+      "x": 60,
+      "y": 20,
+      "dir": "right",
+      "io": "out"
+    },
+    "QN": {
+      "x": 60,
+      "y": 40,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "q̄": "QN",
+    "q_bar": "QN",
+    "qbar": "QN",
+    "nq": "QN",
+    "~q": "QN",
+    "clock": "CLK",
+    "clk": "CLK"
+  },
+  "body": {
+    "x": 10,
+    "y": 5,
+    "w": 40,
+    "h": 50
+  },
+  "prefix": "U",
+  "labels": "top",
+  "required": [
+    "J",
+    "K",
+    "CLK"
+  ],
+  "typeAliases": [
+    "jkff",
+    "flipflop_jk"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/IC-COM-FlipFlop-ClockedJK.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

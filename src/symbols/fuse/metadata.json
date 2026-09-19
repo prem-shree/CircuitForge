@@ -1,0 +1,35 @@
+{
+  "type": "fuse",
+  "name": "Fuse",
+  "category": "passive",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 30,
+      "dir": "left"
+    },
+    "2": {
+      "x": 60,
+      "y": 30,
+      "dir": "right"
+    }
+  },
+  "body": {
+    "x": 10,
+    "y": 20,
+    "w": 40,
+    "h": 20
+  },
+  "prefix": "F",
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Fuse-IEEE.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

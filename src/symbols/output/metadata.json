@@ -1,0 +1,41 @@
+{
+  "type": "output",
+  "name": "Output terminal",
+  "category": "power",
+  "width": 40,
+  "height": 20,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 10,
+      "dir": "left",
+      "io": "in"
+    }
+  },
+  "body": {
+    "x": 28,
+    "y": 4,
+    "w": 12,
+    "h": 12
+  },
+  "terminal": "output",
+  "labels": "none",
+  "text": {
+    "x": 44,
+    "y": 14,
+    "anchor": "start",
+    "default": "$id"
+  },
+  "prefix": "OUT",
+  "typeAliases": [
+    "output_terminal",
+    "out",
+    "port_out"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

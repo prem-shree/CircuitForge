@@ -1,0 +1,31 @@
+{
+  "type": "generic_ic",
+  "name": "Generic IC",
+  "category": "ic",
+  "kind": "box",
+  "label": "IC",
+  "pins": {
+    "left": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "right": [
+      "8",
+      "7",
+      "6",
+      "5"
+    ]
+  },
+  "prefix": "U",
+  "typeAliases": [
+    "ic",
+    "chip"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

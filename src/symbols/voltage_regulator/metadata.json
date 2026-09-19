@@ -1,0 +1,45 @@
+{
+  "type": "voltage_regulator",
+  "name": "Voltage regulator",
+  "category": "analog",
+  "kind": "box",
+  "label": "REG",
+  "pins": {
+    "left": [
+      "IN"
+    ],
+    "right": [
+      "OUT"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "1": "IN",
+    "2": "GND",
+    "3": "OUT",
+    "vin": "IN",
+    "vout": "OUT",
+    "input": "IN",
+    "output": "OUT",
+    "adj": "GND"
+  },
+  "required": [
+    "IN",
+    "OUT",
+    "GND"
+  ],
+  "typeAliases": [
+    "regulator",
+    "ldo",
+    "7805",
+    "lm7805"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

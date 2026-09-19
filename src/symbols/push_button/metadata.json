@@ -1,0 +1,39 @@
+{
+  "type": "push_button",
+  "name": "Push button",
+  "category": "passive",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 30,
+      "dir": "left"
+    },
+    "2": {
+      "x": 60,
+      "y": 30,
+      "dir": "right"
+    }
+  },
+  "body": {
+    "x": 14.8,
+    "y": 11.2,
+    "w": 30.4,
+    "h": 21.6
+  },
+  "prefix": "SW",
+  "typeAliases": [
+    "button",
+    "pushbutton"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Switch-COM-Pushbutton-NO.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

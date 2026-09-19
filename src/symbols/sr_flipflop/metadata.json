@@ -1,0 +1,77 @@
+{
+  "type": "sr_flipflop",
+  "name": "SR flip-flop (gated)",
+  "category": "digital",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "S": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "in"
+    },
+    "E": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "R": {
+      "x": 0,
+      "y": 40,
+      "dir": "left",
+      "io": "in"
+    },
+    "Q": {
+      "x": 60,
+      "y": 20,
+      "dir": "right",
+      "io": "out"
+    },
+    "QN": {
+      "x": 60,
+      "y": 40,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "q̄": "QN",
+    "q_bar": "QN",
+    "qbar": "QN",
+    "nq": "QN",
+    "~q": "QN",
+    "clock": "CLK",
+    "clk": "CLK",
+    "en": "E",
+    "enable": "E",
+    "CLK": "E"
+  },
+  "body": {
+    "x": 10,
+    "y": 5,
+    "w": 40,
+    "h": 50
+  },
+  "prefix": "U",
+  "labels": "top",
+  "required": [
+    "S",
+    "R"
+  ],
+  "typeAliases": [
+    "srff",
+    "sr_latch",
+    "flipflop_sr"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/IC-COM-FlipFlop-GatedSR.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}
