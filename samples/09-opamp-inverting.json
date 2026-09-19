@@ -1,0 +1,57 @@
+{
+  "title": "Inverting Op-Amp Amplifier (Gain −10)",
+  "components": [
+    {
+      "id": "VIN",
+      "type": "ac_source",
+      "value": "100mV"
+    },
+    {
+      "id": "RIN",
+      "type": "resistor",
+      "value": "10kΩ"
+    },
+    {
+      "id": "RF",
+      "type": "resistor",
+      "value": "100kΩ"
+    },
+    {
+      "id": "U1",
+      "type": "opamp",
+      "value": "TL071"
+    },
+    {
+      "id": "VOUT",
+      "type": "output"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "VIN.positive",
+      "RIN.1"
+    ],
+    [
+      "RIN.2",
+      "U1.in-",
+      "RF.1"
+    ],
+    [
+      "RF.2",
+      "U1.out",
+      "VOUT"
+    ],
+    [
+      "U1.in+",
+      "GND"
+    ],
+    [
+      "VIN.negative",
+      "GND"
+    ]
+  ]
+}

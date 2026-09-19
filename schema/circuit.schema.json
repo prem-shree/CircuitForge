@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://circuitforge.dev/schema/circuit.schema.json",
+  "title": "CircuitForge circuit",
+  "description": "Electrical topology for CircuitForge. Layout and wiring are computed; positions are optional overrides.",
+  "type": "object",
+  "required": ["components"],
+  "properties": {
+    "title": { "type": "string", "description": "Drawn above the schematic." },
+    "components": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[^.\\s]+$", "description": "Unique reference designator, e.g. R1." },
+          "type": { "type": "string", "description": "Component type or alias (resistor, npn, opamp, timer_555, ground, …)." },
+          "value": { "type": ["string", "number"], "description": "Shown under/next to the part; names the rail for ground/vcc/net_label." },
+          "label": { "type": "string", "description": "Display name overriding the id (box ICs: text inside the box)." },
+          "rotation": { "enum": [0, 90, 180, 270], "description": "Clockwise degrees. Omit for automatic orientation." },
+          "mirror": { "type": "boolean" },
+          "position": {
+            "type": "object",
+            "description": "Canvas coordinates of the part's first pin. Omit for automatic placement.",
+            "required": ["x", "y"],
+            "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+          },
+          "pins": {
+            "description": "Box parts (generic_ic, microcontroller, connector, …): custom pins.",
+            "oneOf": [
+              { "type": "integer", "minimum": 1, "maximum": 64 },
+              { "type": "array", "items": { "type": "string" } },
+              {
+                "type": "object",
+                "properties": {
+                  "left": { "type": "array", "items": { "type": "string" } },
+                  "right": { "type": "array", "items": { "type": "string" } },
+                  "top": { "type": "array", "items": { "type": "string" } },
+                  "bottom": { "type": "array", "items": { "type": "string" } }
+                },
+                "additionalProperties": false
+              }
+            ]
+          }
+        }
+      }
+    },
+    "connections": {
+      "type": "array",
+      "description": "Each entry joins 2+ pins into one net. Pin refs are \"ComponentId.pin\"; single-pin parts may omit \".pin\".",
+      "items": {
+        "oneOf": [
+          { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+          { "type": "object", "required": ["from", "to"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "net": { "type": "string" } } },
+          { "type": "object", "required": ["pins"], "properties": { "pins": { "type": "array", "items": { "type": "string" }, "minItems": 2 }, "net": { "type": "string" } } }
+        ]
+      }
+    },
+    "nets": {
+      "type": "object",
+      "description": "Alternative to connections: { \"NET_NAME\": [\"R1.2\", \"C1.1\"] }.",
+      "additionalProperties": { "type": "array", "items": { "type": "string" } }
+    }
+  }
+}

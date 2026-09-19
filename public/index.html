@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CircuitForge — JSON to schematic</title>
+  <meta name="description" content="CircuitForge turns a JSON netlist into a clean, professional SVG circuit schematic with automatic layout and wire routing.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231b1b1f'/%3E%3Cpath d='M5 16h5l2-5 3 10 3-10 2 5h7' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css">
+  <script>try{var t=localStorage.getItem('cf-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor"/><path d="M5 16h5l2-5 3 10 3-10 2 5h7" fill="none" stroke="var(--panel)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <span>CircuitForge</span>
+    </div>
+    <nav class="menu-bar" aria-label="Main">
+      <button class="btn" data-action="new">New</button>
+      <button class="btn" data-action="open">Open</button>
+      <div class="dropdown">
+        <button class="btn" data-menu="samples" aria-haspopup="true">Samples <span class="caret"></span></button>
+        <div class="menu" id="menu-samples" role="menu" hidden></div>
+      </div>
+      <button class="btn" data-action="library">Components</button>
+      <div class="dropdown">
+        <button class="btn" data-menu="export" aria-haspopup="true">Export <span class="caret"></span></button>
+        <div class="menu" id="menu-export" role="menu" hidden>
+          <div class="menu-label">Clipboard</div>
+          <button role="menuitem" data-export="copy-png">Copy as PNG</button>
+          <button role="menuitem" data-export="copy-svg">Copy as SVG</button>
+          <button role="menuitem" data-export="copy-json">Copy JSON</button>
+          <div class="menu-sep"></div>
+          <div class="menu-label">Download</div>
+          <button role="menuitem" data-export="svg">SVG <kbd>vector</kbd></button>
+          <button role="menuitem" data-export="png">PNG <kbd>2×</kbd></button>
+          <button role="menuitem" data-export="png-hires">PNG high-resolution <kbd>4×</kbd></button>
+          <button role="menuitem" data-export="png-transparent">PNG transparent</button>
+          <button role="menuitem" data-export="jpeg">JPEG</button>
+          <button role="menuitem" data-export="pdf">PDF</button>
+          <button role="menuitem" data-export="json">JSON</button>
+        </div>
+      </div>
+      <button class="btn" data-action="api">API</button>
+    </nav>
+    <div class="topbar-right">
+      <button class="icon-btn" data-action="theme" title="Toggle dark mode" aria-label="Toggle dark mode">
+        <svg viewBox="0 0 24 24" width="17" height="17"><path d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <input type="file" id="file-input" accept=".json,application/json" hidden>
+  </header>
+
+  <main class="workspace">
+    <section class="pane editor-pane" aria-label="JSON editor">
+      <div class="pane-head">
+        <span class="pane-title">Circuit JSON</span>
+        <span class="pane-meta" id="editor-meta"></span>
+        <button class="btn btn-sm" data-action="format" title="Reformat JSON">Format</button>
+      </div>
+      <div class="editor">
+        <div class="gutter" id="gutter" aria-hidden="true"></div>
+        <textarea id="json" spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="Circuit JSON"></textarea>
+      </div>
+      <div class="problems" id="problems">
+        <div class="problems-head"><span id="problems-title">Problems</span></div>
+        <ul id="problems-list"></ul>
+      </div>
+    </section>
+
+    <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize panels"></div>
+
+    <section class="pane canvas-pane" aria-label="Schematic canvas">
+      <div class="canvas grid-on" id="canvas" tabindex="0">
+        <div class="viewport" id="viewport"></div>
+        <div class="empty-state" id="empty-state" hidden>
+          <p>Describe a circuit in JSON to see its schematic.</p>
+          <button class="btn btn-primary" data-action="load-first-sample">Load a sample</button>
+        </div>
+      </div>
+      <div class="toolbar" role="toolbar" aria-label="Canvas tools">
+        <button class="icon-btn" data-tool="undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+        <button class="icon-btn" data-tool="redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+        <span class="tb-sep"></span>
+        <button class="icon-btn" data-tool="rotate" title="Rotate selected (R)"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
+        <button class="icon-btn" data-tool="delete" title="Delete selected (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
+        <button class="icon-btn" data-tool="autolayout" title="Auto layout (clear manual positions)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4.5a2 2 0 0 1 2 2V14"/></svg></button>
+        <span class="tb-sep"></span>
+        <button class="icon-btn toggle" data-tool="grid" title="Grid (G)" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
+        <button class="icon-btn toggle" data-tool="snap" title="Snap to 20px grid (S)" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 7h4M14 7h4"/></svg></button>
+        <button class="icon-btn toggle" data-tool="bridges" title="Wire bridges at crossings" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 14h6a3 3 0 0 1 6 0h6M12 3v6M12 17v4"/></svg></button>
+        <span class="tb-sep"></span>
+        <button class="icon-btn" data-tool="zoom-out" title="Zoom out (−)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6"/></svg></button>
+        <button class="zoom-label" data-tool="zoom-reset" title="Reset to 100%" id="zoom-label">100%</button>
+        <button class="icon-btn" data-tool="zoom-in" title="Zoom in (+)"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4M8 11h6M11 8v6"/></svg></button>
+        <button class="icon-btn" data-tool="fit" title="Fit to screen (F)"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
+      <aside class="inspector" id="inspector" hidden aria-label="Properties">
+        <div class="inspector-head"><span>Properties</span><button class="icon-btn icon-sm" data-action="deselect" aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+        <form id="inspector-form" autocomplete="off">
+          <label>ID<input name="id" required pattern="[^.\s]+"></label>
+          <label>Type<select name="type"></select></label>
+          <label>Value<input name="value" placeholder="e.g. 10kΩ"></label>
+          <label>Label<input name="label" placeholder="optional display name"></label>
+          <div class="row">
+            <label>Rotation<select name="rotation"><option value="">auto</option><option>0</option><option>90</option><option>180</option><option>270</option></select></label>
+            <label class="check"><input type="checkbox" name="mirror"> Mirror</label>
+          </div>
+          <div class="pins" id="inspector-pins"></div>
+          <div class="row actions">
+            <button type="button" class="btn btn-sm" data-tool="rotate">Rotate</button>
+            <button type="button" class="btn btn-sm btn-danger" data-tool="delete">Delete</button>
+          </div>
+        </form>
+      </aside>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span class="status" id="status"><span class="dot"></span><span id="status-text">Ready</span></span>
+    <span id="status-counts"></span>
+    <span class="spacer"></span>
+    <span>Zoom <b id="status-zoom">100%</b></span>
+    <span>Grid <b id="status-grid">10 px</b></span>
+    <span>Size <b id="status-size">—</b></span>
+  </footer>
+
+  <dialog id="api-dialog" class="dialog">
+    <div class="dialog-head"><h2>API</h2><button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="dialog-body prose">
+      <p>The rendering engine is pure JavaScript with no DOM dependency, so the same code runs in this page, in Node, and behind an HTTP API. This static site has no backend. The <code>server/</code> folder in the repository contains a reference HTTP server.</p>
+      <h3>Endpoints <span class="tag">planned</span></h3>
+      <pre><code>POST /api/v1/render     { "circuit": { … }, "format": "svg" | "json" }
+POST /api/v1/validate   { "circuit": { … } }
+Header: Authorization: Bearer &lt;API_KEY&gt;</code></pre>
+      <p><code>format: "png"</code> and <code>"pdf"</code> are reserved and currently return <code>501</code> from the reference server. In the browser those formats are produced by the Export menu.</p>
+      <h3>In this page</h3>
+      <p>The engine is exposed as <code>window.CircuitForge</code> for scripting from the console:</p>
+      <pre><code>const { svg, errors } = CircuitForge.render(circuit);
+CircuitForge.validate(circuit);   // { valid, errors, warnings }
+CircuitForge.types();             // supported component types</code></pre>
+      <h3>Try it with the current circuit</h3>
+      <div class="row"><button class="btn btn-sm" data-api="validate">POST /api/v1/validate</button><button class="btn btn-sm" data-api="render">POST /api/v1/render</button></div>
+      <pre class="api-out" id="api-out"><code>Response appears here.</code></pre>
+    </div>
+  </dialog>
+
+  <dialog id="library-dialog" class="dialog dialog-wide">
+    <div class="dialog-head"><h2>Components</h2><input type="search" id="library-search" placeholder="Filter types…" aria-label="Filter component types"><button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="dialog-body" id="library-body"></div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

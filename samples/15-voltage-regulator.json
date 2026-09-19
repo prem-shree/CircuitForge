@@ -1,0 +1,62 @@
+{
+  "title": "5V Linear Regulator",
+  "components": [
+    {
+      "id": "BT1",
+      "type": "battery",
+      "value": "9V"
+    },
+    {
+      "id": "U1",
+      "type": "voltage_regulator",
+      "value": "LM7805"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "value": "330nF"
+    },
+    {
+      "id": "C2",
+      "type": "capacitor",
+      "value": "100nF"
+    },
+    {
+      "id": "VOUT",
+      "type": "output",
+      "label": "+5V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "BT1.positive",
+      "U1.IN",
+      "C1.1"
+    ],
+    [
+      "U1.OUT",
+      "C2.1",
+      "VOUT"
+    ],
+    [
+      "U1.GND",
+      "GND"
+    ],
+    [
+      "C1.2",
+      "GND"
+    ],
+    [
+      "C2.2",
+      "GND"
+    ],
+    [
+      "BT1.negative",
+      "GND"
+    ]
+  ]
+}

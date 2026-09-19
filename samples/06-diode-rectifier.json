@@ -1,0 +1,57 @@
+{
+  "title": "Half-Wave Rectifier with Filter",
+  "components": [
+    {
+      "id": "V1",
+      "type": "ac_source",
+      "value": "12V 50Hz"
+    },
+    {
+      "id": "D1",
+      "type": "diode",
+      "value": "1N4007"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor_polarized",
+      "value": "470µF"
+    },
+    {
+      "id": "RL",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "VOUT",
+      "type": "output"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "V1.positive",
+      "D1.anode"
+    ],
+    [
+      "D1.cathode",
+      "C1.positive",
+      "RL.1",
+      "VOUT"
+    ],
+    [
+      "C1.negative",
+      "GND"
+    ],
+    [
+      "RL.2",
+      "GND"
+    ],
+    [
+      "V1.negative",
+      "GND"
+    ]
+  ]
+}
