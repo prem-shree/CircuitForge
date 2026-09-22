@@ -1,0 +1,130 @@
+{
+  "title": "I²C Bus with Two Devices",
+  "description": "One controller, an OLED display and a sensor share SDA/SCL with pull-up resistors.",
+  "education": {
+    "summary": "I²C is a two-wire bus: every device is open-drain and can only pull the lines low, so each line needs a pull-up resistor. Devices are selected by address, not by extra wires.",
+    "objectives": [
+      "Explain open-drain signalling",
+      "Size I²C pull-ups",
+      "Share a bus between devices"
+    ],
+    "questions": [
+      "What happens to the bus if you leave the pull-ups out?"
+    ]
+  },
+  "components": [
+    {
+      "id": "U1",
+      "type": "microcontroller",
+      "value": "MCU",
+      "pins": {
+        "left": [
+          "RST"
+        ],
+        "right": [
+          "SDA",
+          "SCL"
+        ],
+        "top": [
+          "VCC"
+        ],
+        "bottom": [
+          "GND"
+        ]
+      },
+      "pinTypes": {
+        "SDA": "open_drain",
+        "SCL": "open_drain"
+      }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "4.7kΩ"
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "4.7kΩ"
+    },
+    {
+      "id": "DS1",
+      "type": "oled",
+      "value": "SSD1306"
+    },
+    {
+      "id": "SNS1",
+      "type": "sensor",
+      "value": "BME280",
+      "pinTypes": {
+        "OUT": "open_drain"
+      }
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+3V3"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    {
+      "pins": [
+        "U1.SDA",
+        "R1.2",
+        "DS1.SDA",
+        "SNS1.OUT"
+      ],
+      "net": "SDA",
+      "class": "bus"
+    },
+    {
+      "pins": [
+        "U1.SCL",
+        "R2.2",
+        "DS1.SCL"
+      ],
+      "net": "SCL",
+      "class": "bus"
+    },
+    [
+      "R1.1",
+      "VCC"
+    ],
+    [
+      "R2.1",
+      "VCC"
+    ],
+    [
+      "U1.VCC",
+      "VCC"
+    ],
+    [
+      "U1.RST",
+      "VCC"
+    ],
+    [
+      "DS1.VCC",
+      "VCC"
+    ],
+    [
+      "SNS1.VCC",
+      "VCC"
+    ],
+    [
+      "U1.GND",
+      "GND"
+    ],
+    [
+      "DS1.GND",
+      "GND"
+    ],
+    [
+      "SNS1.GND",
+      "GND"
+    ]
+  ]
+}

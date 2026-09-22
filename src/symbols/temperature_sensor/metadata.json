@@ -1,0 +1,39 @@
+{
+  "type": "temperature_sensor",
+  "name": "Temperature sensor",
+  "category": "sensor",
+  "kind": "box",
+  "label": "TEMP",
+  "pins": {
+    "left": [
+      "VCC"
+    ],
+    "right": [
+      "OUT"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "OUT": "out"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "OUT"
+  ],
+  "typeAliases": [
+    "lm35",
+    "tmp36",
+    "thermometer"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

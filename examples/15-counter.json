@@ -1,0 +1,89 @@
+{
+  "title": "4-Bit Counter with Decoded Display",
+  "description": "A clock drives a binary counter; the outputs feed a decoder.",
+  "education": {
+    "summary": "Counters divide a clock and hold state. n stages count to 2ⁿ − 1.",
+    "objectives": [
+      "Read a binary count",
+      "Connect clock and clear lines",
+      "Decode a binary value"
+    ]
+  },
+  "components": [
+    {
+      "id": "CLK",
+      "type": "input",
+      "label": "CLK",
+      "section": "input"
+    },
+    {
+      "id": "RSTN",
+      "type": "input",
+      "label": "/RESET",
+      "section": "input"
+    },
+    {
+      "id": "U1",
+      "type": "counter",
+      "value": "74HC161"
+    },
+    {
+      "id": "U2",
+      "type": "decoder",
+      "value": "74HC139"
+    },
+    {
+      "id": "Q0",
+      "type": "output",
+      "label": "Y0"
+    },
+    {
+      "id": "Q1",
+      "type": "output",
+      "label": "Y1"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+5V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "CLK",
+      "U1.CLK"
+    ],
+    [
+      "RSTN",
+      "U1.~CLR"
+    ],
+    [
+      "U1.EN",
+      "VCC"
+    ],
+    [
+      "U1.Q0",
+      "U2.A0"
+    ],
+    [
+      "U1.Q1",
+      "U2.A1"
+    ],
+    [
+      "U2.EN",
+      "GND"
+    ],
+    [
+      "U2.Y0",
+      "Q0"
+    ],
+    [
+      "U2.Y1",
+      "Q1"
+    ]
+  ]
+}

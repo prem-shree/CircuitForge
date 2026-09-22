@@ -2,64 +2,242 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://circuitforge.dev/schema/circuit.schema.json",
   "title": "CircuitForge circuit",
-  "description": "Electrical topology for CircuitForge. Layout and wiring are computed; positions are optional overrides.",
+  "description": "Electrical topology plus teaching material. Layout and wiring are computed from the graph; positions, rotations and wire routes are optional overrides. See docs/JSON-SCHEMA.md and examples/complete-circuit.json.",
   "type": "object",
   "required": ["components"],
+  "additionalProperties": false,
   "properties": {
+    "$schema": { "type": "string" },
+    "version": { "type": ["string", "number"], "description": "Version of this circuit document (free form)." },
     "title": { "type": "string", "description": "Drawn above the schematic." },
+    "name": { "type": "string" },
+    "description": { "type": "string", "description": "One paragraph about the circuit; not drawn." },
+    "notes": { "type": ["string", "array"] },
+
+    "metadata": {
+      "type": "object",
+      "description": "Bookkeeping: author, revision, course, tags, licence. Never affects the drawing.",
+      "properties": {
+        "author": { "type": "string" },
+        "created": { "type": "string" },
+        "revision": { "type": "string" },
+        "course": { "type": "string" },
+        "difficulty": { "enum": ["beginner", "intermediate", "advanced"] },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "license": { "type": "string" }
+      }
+    },
+
+    "layout": {
+      "type": "object",
+      "description": "Spacing for the automatic layout. All values are in schematic pixels.",
+      "additionalProperties": false,
+      "properties": {
+        "grid": { "type": "number", "default": 10, "description": "Placement grid; rounded to a multiple of the 10px routing grid." },
+        "componentGap": { "type": "number", "default": 40, "description": "Horizontal gap between columns; grows automatically where many nets cross." },
+        "wireGap": { "type": "number", "default": 16, "description": "Clearance kept around each part." },
+        "labelGap": { "type": "number", "default": 6, "description": "Gap between a part and its reference/value text." },
+        "sectionGap": { "type": "number", "default": 60, "description": "Gap between sub-circuits that are only joined through rails." },
+        "direction": { "enum": ["lr"], "description": "Reserved; signal flow is left to right." }
+      }
+    },
+
+    "validation": {
+      "type": "object",
+      "description": "Tunes the electrical rule checks.",
+      "properties": {
+        "supplyVoltage": { "type": "number", "description": "Used by rules that need a supply figure (LED resistor sizing, resistor power)." },
+        "rules": {
+          "type": "object",
+          "description": "Severity per rule code: off | info | warning | error.",
+          "additionalProperties": { "enum": ["off", "info", "warning", "error"] }
+        }
+      }
+    },
+
+    "simulation": {
+      "type": "object",
+      "description": "Metadata for an external simulator. CircuitForge stores and validates it but does not simulate.",
+      "properties": {
+        "engine": { "type": "string" },
+        "analyses": { "type": "array", "items": { "type": "object" } },
+        "models": { "type": "object", "description": "Component id -> SPICE model name." },
+        "expected": { "type": "object", "description": "Expected results, for teaching and for checking your own measurements." }
+      }
+    },
+
+    "education": {
+      "type": "object",
+      "description": "Teaching material for the circuit as a whole; shown in the app's Learn panel.",
+      "properties": {
+        "summary": { "type": "string" },
+        "theory": { "type": "string" },
+        "objectives": { "type": "array", "items": { "type": "string" } },
+        "questions": { "type": "array", "items": { "type": "string" } },
+        "experiments": { "type": "array", "items": { "type": "string" } },
+        "troubleshooting": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
     "components": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["id", "type"],
         "properties": {
-          "id": { "type": "string", "pattern": "^[^.\\s]+$", "description": "Unique reference designator, e.g. R1." },
-          "type": { "type": "string", "description": "Component type or alias (resistor, npn, opamp, timer_555, ground, …)." },
-          "value": { "type": ["string", "number"], "description": "Shown under/next to the part; names the rail for ground/vcc/net_label." },
-          "label": { "type": "string", "description": "Display name overriding the id (box ICs: text inside the box)." },
-          "rotation": { "enum": [0, 90, 180, 270], "description": "Clockwise degrees. Omit for automatic orientation." },
-          "mirror": { "type": "boolean" },
+          "id": { "type": "string", "pattern": "^[^.\\s]+$", "description": "Unique reference designator, e.g. R1. No dots or spaces." },
+          "type": { "type": "string", "description": "Component type or alias (resistor, npn, opamp, timer_555, arduino_uno, ground, …)." },
+          "value": { "type": ["string", "number"], "description": "Shown next to the part. For ground/vcc/net_label it names the rail." },
+          "label": { "type": "string", "description": "Display name instead of the id; for box parts it is the text inside the box." },
+          "rotation": { "enum": [0, 90, 180, 270], "description": "Clockwise degrees. Rotates the drawing and the pin coordinates together. Omit for automatic orientation." },
+          "mirror": { "type": "boolean", "description": "Mirror horizontally before rotating." },
           "position": {
             "type": "object",
             "description": "Canvas coordinates of the part's first pin. Omit for automatic placement.",
             "required": ["x", "y"],
             "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
           },
+          "section": { "enum": ["input", "process", "output", "power"], "description": "Puts the part in the left, middle or right band of the sheet." },
           "pins": {
-            "description": "Box parts (generic_ic, microcontroller, connector, …): custom pins.",
+            "description": "Box parts only (generic_ic, microcontroller, memory, connector, boards…): the pins to draw.",
             "oneOf": [
               { "type": "integer", "minimum": 1, "maximum": 64 },
               { "type": "array", "items": { "type": "string" } },
               {
                 "type": "object",
+                "additionalProperties": false,
                 "properties": {
                   "left": { "type": "array", "items": { "type": "string" } },
                   "right": { "type": "array", "items": { "type": "string" } },
                   "top": { "type": "array", "items": { "type": "string" } },
                   "bottom": { "type": "array", "items": { "type": "string" } }
-                },
-                "additionalProperties": false
+                }
               }
             ]
-          }
+          },
+          "pinTypes": {
+            "type": "object",
+            "description": "Electrical type per pin, used by the rule checks.",
+            "additionalProperties": { "enum": ["in", "out", "passive", "power", "power_in", "power_out", "bidirectional", "tristate", "open_collector", "open_drain", "unspecified"] }
+          },
+          "params": {
+            "type": "object",
+            "description": "Physical data: tolerance, ratings, package/footprint. Rules such as RESISTOR_POWER read from here.",
+            "properties": {
+              "tolerance": { "type": "string" },
+              "rating": { "type": "object", "description": "e.g. { \"power\": \"0.25W\", \"voltage\": \"50V\", \"current\": \"1A\" }" },
+              "footprint": { "type": "string" },
+              "package": { "type": "string" }
+            }
+          },
+          "bom": {
+            "type": "object",
+            "description": "Purchasing information for this part.",
+            "properties": {
+              "mpn": { "type": "string" },
+              "manufacturer": { "type": "string" },
+              "supplier": { "type": "string" },
+              "quantity": { "type": "number" },
+              "price": { "type": ["string", "number"] }
+            }
+          },
+          "education": { "type": "object", "description": "Notes for this part: purpose, explanation, mistakes." },
+          "simulation": { "type": "object", "description": "Per-part simulation data, e.g. a model name." }
         }
       }
     },
+
     "connections": {
       "type": "array",
-      "description": "Each entry joins 2+ pins into one net. Pin refs are \"ComponentId.pin\"; single-pin parts may omit \".pin\".",
+      "description": "Each entry joins two or more pins into one net. Pin references are \"ComponentId.pin\"; single-pin parts may be referenced without a pin.",
       "items": {
         "oneOf": [
           { "type": "array", "items": { "type": "string" }, "minItems": 2 },
-          { "type": "object", "required": ["from", "to"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "net": { "type": "string" } } },
-          { "type": "object", "required": ["pins"], "properties": { "pins": { "type": "array", "items": { "type": "string" }, "minItems": 2 }, "net": { "type": "string" } } }
+          {
+            "type": "object",
+            "required": ["from", "to"],
+            "properties": {
+              "from": { "type": "string" }, "to": { "type": "string" },
+              "net": { "type": "string" }, "class": { "enum": ["signal", "power", "ground", "bus", "analog", "clock", "differential"] },
+              "waypoints": { "$ref": "#/$defs/points" }, "route": { "$ref": "#/$defs/points" }, "locked": { "type": "boolean" }
+            }
+          },
+          {
+            "type": "object",
+            "required": ["pins"],
+            "properties": {
+              "pins": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+              "net": { "type": "string", "description": "Net name; nets with the same name are joined." },
+              "class": { "enum": ["signal", "power", "ground", "bus", "analog", "clock", "differential"] },
+              "waypoints": { "$ref": "#/$defs/points", "description": "Points the router must pass through." },
+              "route": { "$ref": "#/$defs/points", "description": "Manual orthogonal route, drawn as given." },
+              "locked": { "type": "boolean", "description": "Keep this route when parts move." }
+            }
+          }
         ]
       }
     },
+
     "nets": {
       "type": "object",
-      "description": "Alternative to connections: { \"NET_NAME\": [\"R1.2\", \"C1.1\"] }.",
+      "description": "Alternative to connections: { \"VOUT\": [\"R1.2\", \"C1.1\"] }.",
       "additionalProperties": { "type": "array", "items": { "type": "string" } }
+    },
+
+    "junctions": {
+      "type": "array",
+      "description": "Informational. Junction dots are detected automatically wherever three or more wire ends meet.",
+      "items": { "type": "object" }
+    },
+
+    "measurements": {
+      "type": "array",
+      "description": "Probe markers drawn on the schematic.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "enum": ["voltage", "current", "resistance", "frequency"] },
+          "at": { "description": "Net name, \"Component.pin\", component id, or {x, y}.", "type": ["string", "object"] },
+          "label": { "type": "string" },
+          "expected": { "type": ["string", "number"] },
+          "note": { "type": "string" }
+        }
+      }
+    },
+
+    "annotations": {
+      "type": "array",
+      "description": "Free text with a leader line.",
+      "items": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": { "type": "string", "description": "Use \\n for a line break." },
+          "at": { "type": ["string", "object"], "description": "Net name, \"Component.pin\", component id, or {x, y}." },
+          "dx": { "type": "number" }, "dy": { "type": "number" },
+          "anchor": { "enum": ["start", "middle", "end"] },
+          "leader": { "type": "boolean", "default": true }
+        }
+      }
+    },
+
+    "bom": {
+      "type": "array",
+      "description": "Bill of materials rows. Free form; per-part data can also live on the component.",
+      "items": { "type": "object" }
+    }
+  },
+
+  "$defs": {
+    "points": {
+      "type": "array",
+      "description": "Points as [{\"x\":120,\"y\":80}] or [[120,80]]; snapped to the 10px grid.",
+      "items": {
+        "oneOf": [
+          { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number" }, "y": { "type": "number" } } },
+          { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+        ]
+      }
     }
   }
 }

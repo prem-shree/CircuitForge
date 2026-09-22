@@ -22,8 +22,8 @@
       <button class="btn" data-action="new">New</button>
       <button class="btn" data-action="open">Open</button>
       <div class="dropdown">
-        <button class="btn" data-menu="samples" aria-haspopup="true">Samples <span class="caret"></span></button>
-        <div class="menu" id="menu-samples" role="menu" hidden></div>
+        <button class="btn" data-menu="examples" aria-haspopup="true">Examples <span class="caret"></span></button>
+        <div class="menu" id="menu-examples" role="menu" hidden></div>
       </div>
       <button class="btn" data-action="library">Components</button>
       <div class="dropdown">
@@ -44,6 +44,7 @@
           <button role="menuitem" data-export="json">JSON</button>
         </div>
       </div>
+      <button class="btn" data-action="learn">Learn</button>
       <button class="btn" data-action="api">API</button>
     </nav>
     <div class="topbar-right">
@@ -110,6 +111,7 @@
             <label class="check"><input type="checkbox" name="mirror"> Mirror</label>
           </div>
           <div class="pins" id="inspector-pins"></div>
+          <div class="edu" id="inspector-edu" hidden></div>
           <div class="row actions">
             <button type="button" class="btn btn-sm" data-tool="rotate">Rotate</button>
             <button type="button" class="btn btn-sm btn-danger" data-tool="delete">Delete</button>
@@ -151,6 +153,11 @@ CircuitForge.types();             // supported component types</code></pre>
   <dialog id="library-dialog" class="dialog dialog-wide">
     <div class="dialog-head"><h2>Components</h2><input type="search" id="library-search" placeholder="Filter types…" aria-label="Filter component types"><button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <div class="dialog-body" id="library-body"></div>
+  </dialog>
+
+  <dialog id="learn-dialog" class="dialog dialog-wide">
+    <div class="dialog-head"><h2>Learn this circuit</h2><button class="icon-btn" data-close aria-label="Close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <div class="dialog-body prose learn" id="learn-body"></div>
   </dialog>
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>

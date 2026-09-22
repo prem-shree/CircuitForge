@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" width="60" height="40">
+<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round">
+<circle cx="30" cy="20" r="16"/><path d="M0 20h14M46 20h14"/><text x="30" y="25" font-size="13" font-weight="600" text-anchor="middle" fill="currentColor" stroke="none">M</text>
+</g>
+</svg>

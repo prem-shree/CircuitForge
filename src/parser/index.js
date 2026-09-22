@@ -89,14 +89,23 @@ export function parseRef(ref) {
 // plus an optional top-level "nets": { "VOUT": ["A.1", "B.2"] }.
 export function normalizeConnections(circuit) {
   const list = [];
-  const push = (refs, name, path) => list.push({ refs, name: name || null, path });
+  const push = (refs, name, path, opts = {}) => list.push({
+    refs,
+    name: name || null,
+    path,
+    class: opts.class || opts.type || null,       // signal | power | ground | bus | analog | clock
+    waypoints: Array.isArray(opts.waypoints) ? opts.waypoints : null,
+    route: Array.isArray(opts.route) ? opts.route : null,
+    locked: !!opts.locked,
+    label: opts.label ?? null,
+  });
   const conns = Array.isArray(circuit.connections) ? circuit.connections : [];
   conns.forEach((c, i) => {
     const path = `connections[${i}]`;
     if (Array.isArray(c)) push(c, null, path);
     else if (c && typeof c === 'object') {
-      if (Array.isArray(c.pins)) push(c.pins, c.net || c.name, path);
-      else push([c.from, c.to], c.net || c.name, path);
+      if (Array.isArray(c.pins)) push(c.pins, c.net || c.name, path, c);
+      else push([c.from, c.to], c.net || c.name, path, c);
     } else push(null, null, path);
   });
   if (circuit.nets && typeof circuit.nets === 'object' && !Array.isArray(circuit.nets)) {

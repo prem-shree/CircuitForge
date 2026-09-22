@@ -1,0 +1,75 @@
+{
+  "title": "5V Linear Regulator",
+  "education": {
+    "summary": "A linear regulator turns 9 V into a stable 5 V; the capacitors keep it from oscillating.",
+    "objectives": [
+      "Explain dropout voltage",
+      "Compute regulator dissipation",
+      "Say why both capacitors are needed"
+    ],
+    "theory": "Pdiss = (Vin − Vout) × Iout — at 9 V in, 5 V out and 100 mA that is 0.4 W of heat.",
+    "questions": [
+      "How much power does the regulator waste at 200 mA?",
+      "What happens if the input falls to 5.5 V?"
+    ]
+  },
+  "components": [
+    {
+      "id": "BT1",
+      "type": "battery",
+      "value": "9V"
+    },
+    {
+      "id": "U1",
+      "type": "voltage_regulator",
+      "value": "LM7805"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "value": "330nF"
+    },
+    {
+      "id": "C2",
+      "type": "capacitor",
+      "value": "100nF"
+    },
+    {
+      "id": "VOUT",
+      "type": "output",
+      "label": "+5V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "BT1.positive",
+      "U1.IN",
+      "C1.1"
+    ],
+    [
+      "U1.OUT",
+      "C2.1",
+      "VOUT"
+    ],
+    [
+      "U1.GND",
+      "GND"
+    ],
+    [
+      "C1.2",
+      "GND"
+    ],
+    [
+      "C2.2",
+      "GND"
+    ],
+    [
+      "BT1.negative",
+      "GND"
+    ]
+  ]
+}

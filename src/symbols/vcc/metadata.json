@@ -8,7 +8,8 @@
     "1": {
       "x": 20,
       "y": 40,
-      "dir": "down"
+      "dir": "down",
+      "io": "power_out"
     }
   },
   "body": {

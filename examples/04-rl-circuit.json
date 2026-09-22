@@ -1,0 +1,62 @@
+{
+  "title": "RL Circuit",
+  "education": {
+    "summary": "The inductor opposes changes in current, so the current rises gradually when the switch closes.",
+    "objectives": [
+      "Compute an L/R time constant",
+      "Explain the voltage spike when a switch opens"
+    ],
+    "theory": "τ = L / R. Opening the switch forces a fast di/dt, and V = L·di/dt makes a large spike.",
+    "questions": [
+      "What is the time constant here?",
+      "Why do inductive loads need a flyback diode?"
+    ]
+  },
+  "components": [
+    {
+      "id": "V1",
+      "type": "dc_source",
+      "value": "12V"
+    },
+    {
+      "id": "SW1",
+      "type": "switch"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "100Ω"
+    },
+    {
+      "id": "L1",
+      "type": "inductor",
+      "value": "10mH"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "V1.positive",
+      "SW1.1"
+    ],
+    [
+      "SW1.2",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "L1.1"
+    ],
+    [
+      "L1.2",
+      "GND"
+    ],
+    [
+      "V1.negative",
+      "GND"
+    ]
+  ]
+}

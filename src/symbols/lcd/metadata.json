@@ -1,0 +1,48 @@
+{
+  "type": "lcd",
+  "name": "Character LCD",
+  "category": "display",
+  "kind": "box",
+  "label": "LCD",
+  "pins": {
+    "left": [
+      "VSS",
+      "VDD",
+      "V0",
+      "RS",
+      "RW",
+      "E"
+    ],
+    "right": [
+      "D4",
+      "D5",
+      "D6",
+      "D7",
+      "A",
+      "K"
+    ]
+  },
+  "prefix": "DS",
+  "pinIO": {
+    "VSS": "power_in",
+    "VDD": "power_in",
+    "D4": "bidirectional",
+    "D5": "bidirectional",
+    "D6": "bidirectional",
+    "D7": "bidirectional"
+  },
+  "required": [
+    "VSS",
+    "VDD"
+  ],
+  "typeAliases": [
+    "lcd1602",
+    "hd44780",
+    "character_lcd"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

@@ -1,0 +1,30 @@
+// Example circuits bundled into the app (the same files live in examples/).
+import e0 from '../../examples/complete-circuit.json';
+import e1 from '../../examples/01-led-resistor.json';
+import e2 from '../../examples/02-voltage-divider.json';
+import e3 from '../../examples/03-rc-lowpass.json';
+import e4 from '../../examples/04-rl-circuit.json';
+import e5 from '../../examples/05-rlc-series.json';
+import e6 from '../../examples/06-diode-rectifier.json';
+import e7 from '../../examples/07-transistor-switch.json';
+import e8 from '../../examples/08-bjt-amplifier.json';
+import e9 from '../../examples/09-mosfet-switch.json';
+import e10 from '../../examples/10-opamp-inverting.json';
+import e11 from '../../examples/11-comparator.json';
+import e12 from '../../examples/12-555-astable.json';
+import e13 from '../../examples/13-logic-full-adder.json';
+import e14 from '../../examples/14-flipflop-counter.json';
+import e15 from '../../examples/15-counter.json';
+import e16 from '../../examples/16-shift-register.json';
+import e17 from '../../examples/17-button-input.json';
+import e18 from '../../examples/18-microcontroller.json';
+import e19 from '../../examples/19-pwm-motor.json';
+import e20 from '../../examples/20-regulated-supply.json';
+import e21 from '../../examples/21-adc-input.json';
+import e22 from '../../examples/22-uart-link.json';
+import e23 from '../../examples/23-i2c-bus.json';
+import e24 from '../../examples/24-spi-bus.json';
+import e25 from '../../examples/25-mcu-led-button.json';
+import e26 from '../../examples/26-rgb-seven-segment.json';
+
+export const EXAMPLES = [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18, e19, e20, e21, e22, e23, e24, e25, e26];

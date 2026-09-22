@@ -1,0 +1,61 @@
+{
+  "title": "LED with Current-Limiting Resistor",
+  "education": {
+    "summary": "The resistor sets the LED current. Without it the LED conducts almost uncontrolled and burns out.",
+    "objectives": [
+      "Apply Ohm's law to size a series resistor",
+      "Read LED polarity from the symbol",
+      "Explain forward voltage"
+    ],
+    "theory": "The LED drops roughly its forward voltage whatever the current, so the resistor takes the rest of the supply: R = (Vs − Vf) / I.",
+    "questions": [
+      "What current flows here with a 5 V supply and Vf = 2 V?",
+      "What changes if the resistor is 1 kΩ instead?"
+    ],
+    "experiments": [
+      "Swap in 220 Ω, 1 kΩ and 10 kΩ and compare brightness."
+    ],
+    "troubleshooting": [
+      "LED dark: check polarity first, then the resistor value."
+    ]
+  },
+  "components": [
+    {
+      "id": "V1",
+      "type": "dc_source",
+      "value": "5V"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "330Ω"
+    },
+    {
+      "id": "D1",
+      "type": "led",
+      "value": "Red"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "V1.positive",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "D1.anode"
+    ],
+    [
+      "D1.cathode",
+      "GND"
+    ],
+    [
+      "V1.negative",
+      "GND"
+    ]
+  ]
+}

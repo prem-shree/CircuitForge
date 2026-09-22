@@ -1,0 +1,110 @@
+{
+  "title": "Light Sensor with Comparator",
+  "description": "An LDR divider drives a comparator against a reference divider; the output lights an LED.",
+  "education": {
+    "summary": "A comparator turns an analog threshold into a digital level. The reference divider sets the trip point.",
+    "objectives": [
+      "Build a sensing divider",
+      "Set a threshold",
+      "Read an open-loop comparator"
+    ]
+  },
+  "components": [
+    {
+      "id": "LDR1",
+      "type": "photoresistor",
+      "value": "10kΩ @ 10lux"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "10kΩ"
+    },
+    {
+      "id": "RV1",
+      "type": "potentiometer",
+      "value": "10kΩ"
+    },
+    {
+      "id": "U1",
+      "type": "comparator",
+      "value": "LM393"
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "330Ω"
+    },
+    {
+      "id": "D1",
+      "type": "led",
+      "value": "Red"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+5V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "VCC",
+      "LDR1.1"
+    ],
+    {
+      "pins": [
+        "LDR1.2",
+        "R1.1",
+        "U1.in+"
+      ],
+      "net": "SENSE"
+    },
+    [
+      "R1.2",
+      "GND"
+    ],
+    [
+      "VCC",
+      "RV1.1"
+    ],
+    [
+      "RV1.2",
+      "GND"
+    ],
+    {
+      "pins": [
+        "RV1.wiper",
+        "U1.in-"
+      ],
+      "net": "VREF"
+    },
+    [
+      "U1.out",
+      "R2.1"
+    ],
+    [
+      "R2.2",
+      "D1.anode"
+    ],
+    [
+      "D1.cathode",
+      "GND"
+    ]
+  ],
+  "measurements": [
+    {
+      "type": "voltage",
+      "at": "SENSE",
+      "label": "V(sense)"
+    },
+    {
+      "type": "voltage",
+      "at": "VREF",
+      "label": "V(ref)"
+    }
+  ]
+}

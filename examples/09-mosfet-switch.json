@@ -1,0 +1,85 @@
+{
+  "title": "N-MOSFET Low-Side LED Driver",
+  "education": {
+    "summary": "A logic-level MOSFET switches the load on the low side; the pull-down keeps the gate defined.",
+    "objectives": [
+      "Explain gate threshold and logic-level parts",
+      "Say why a gate needs a pull-down"
+    ],
+    "questions": [
+      "What happens if the gate resistor is left out?",
+      "Why is the load in the drain and not the source?"
+    ]
+  },
+  "components": [
+    {
+      "id": "PWM",
+      "type": "input"
+    },
+    {
+      "id": "RG",
+      "type": "resistor",
+      "value": "100Ω"
+    },
+    {
+      "id": "RPD",
+      "type": "resistor",
+      "value": "10kΩ"
+    },
+    {
+      "id": "Q1",
+      "type": "nmos",
+      "value": "IRLZ44N"
+    },
+    {
+      "id": "RL",
+      "type": "resistor",
+      "value": "220Ω"
+    },
+    {
+      "id": "D1",
+      "type": "led",
+      "value": "Load"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+12V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "PWM",
+      "RG.1"
+    ],
+    [
+      "RG.2",
+      "Q1.G",
+      "RPD.1"
+    ],
+    [
+      "RPD.2",
+      "GND"
+    ],
+    [
+      "Q1.S",
+      "GND"
+    ],
+    [
+      "Q1.D",
+      "D1.cathode"
+    ],
+    [
+      "D1.anode",
+      "RL.2"
+    ],
+    [
+      "RL.1",
+      "VCC"
+    ]
+  ]
+}

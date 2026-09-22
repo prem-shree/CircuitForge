@@ -1,7 +1,7 @@
 {
   "type": "connector",
   "name": "Connector",
-  "category": "power",
+  "category": "connector",
   "kind": "box",
   "label": "",
   "pins": {

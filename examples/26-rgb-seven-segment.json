@@ -1,0 +1,133 @@
+{
+  "title": "RGB LED and Seven-Segment Display",
+  "description": "Per-channel current limiting for an RGB LED and per-segment resistors for a display digit.",
+  "education": {
+    "summary": "Every LED junction needs its own resistor. Sharing one resistor on the common pin makes brightness depend on how many segments are lit.",
+    "objectives": [
+      "Size resistors per colour channel",
+      "Drive a common-cathode display"
+    ]
+  },
+  "components": [
+    {
+      "id": "D1",
+      "type": "rgb_led",
+      "value": "CC"
+    },
+    {
+      "id": "RR",
+      "type": "resistor",
+      "value": "220Ω"
+    },
+    {
+      "id": "RG",
+      "type": "resistor",
+      "value": "150Ω"
+    },
+    {
+      "id": "RB",
+      "type": "resistor",
+      "value": "150Ω"
+    },
+    {
+      "id": "DS1",
+      "type": "seven_segment",
+      "value": "CC"
+    },
+    {
+      "id": "RA",
+      "type": "resistor",
+      "value": "330Ω"
+    },
+    {
+      "id": "RB2",
+      "type": "resistor",
+      "value": "330Ω"
+    },
+    {
+      "id": "INR",
+      "type": "input",
+      "label": "R"
+    },
+    {
+      "id": "ING",
+      "type": "input",
+      "label": "G"
+    },
+    {
+      "id": "INB",
+      "type": "input",
+      "label": "B"
+    },
+    {
+      "id": "SEGA",
+      "type": "input",
+      "label": "a"
+    },
+    {
+      "id": "SEGB",
+      "type": "input",
+      "label": "b"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "INR",
+      "RR.1"
+    ],
+    [
+      "RR.2",
+      "D1.R"
+    ],
+    [
+      "ING",
+      "RG.1"
+    ],
+    [
+      "RG.2",
+      "D1.G"
+    ],
+    [
+      "INB",
+      "RB.1"
+    ],
+    [
+      "RB.2",
+      "D1.B"
+    ],
+    [
+      "D1.COM",
+      "GND"
+    ],
+    [
+      "SEGA",
+      "RA.1"
+    ],
+    [
+      "RA.2",
+      "DS1.a"
+    ],
+    [
+      "SEGB",
+      "RB2.1"
+    ],
+    [
+      "RB2.2",
+      "DS1.b"
+    ],
+    [
+      "DS1.COM",
+      "GND"
+    ]
+  ],
+  "validation": {
+    "rules": {
+      "FLOATING_INPUT": "off"
+    },
+    "note": "unused segments are intentionally left open in this teaching example"
+  }
+}

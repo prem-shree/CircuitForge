@@ -1,0 +1,70 @@
+{
+  "title": "Inverting Op-Amp Amplifier (Gain −10)",
+  "education": {
+    "summary": "Negative feedback holds the inverting input at virtual ground, so the gain is set purely by the two resistors.",
+    "objectives": [
+      "Derive the inverting gain",
+      "Explain virtual ground",
+      "Recognise clipping at the supplies"
+    ],
+    "theory": "Av = −Rf / Rin. The input current Vin/Rin flows through Rf because the op-amp input draws none.",
+    "questions": [
+      "What is the gain here?",
+      "What output does a 1 V input ask for, and can the op-amp deliver it?"
+    ]
+  },
+  "components": [
+    {
+      "id": "VIN",
+      "type": "ac_source",
+      "value": "100mV"
+    },
+    {
+      "id": "RIN",
+      "type": "resistor",
+      "value": "10kΩ"
+    },
+    {
+      "id": "RF",
+      "type": "resistor",
+      "value": "100kΩ"
+    },
+    {
+      "id": "U1",
+      "type": "opamp",
+      "value": "TL071"
+    },
+    {
+      "id": "VOUT",
+      "type": "output"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "VIN.positive",
+      "RIN.1"
+    ],
+    [
+      "RIN.2",
+      "U1.in-",
+      "RF.1"
+    ],
+    [
+      "RF.2",
+      "U1.out",
+      "VOUT"
+    ],
+    [
+      "U1.in+",
+      "GND"
+    ],
+    [
+      "VIN.negative",
+      "GND"
+    ]
+  ]
+}

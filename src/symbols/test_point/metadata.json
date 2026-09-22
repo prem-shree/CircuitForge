@@ -1,14 +1,15 @@
 {
   "type": "test_point",
   "name": "Test point",
-  "category": "power",
+  "category": "measurement",
   "width": 20,
   "height": 30,
   "pins": {
     "1": {
       "x": 10,
       "y": 30,
-      "dir": "down"
+      "dir": "down",
+      "io": "passive"
     }
   },
   "body": {

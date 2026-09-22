@@ -90,6 +90,18 @@ const M = [
   // ---- converters
   { type: 'adc', file: 'Miscellaneous-COM-ADC', name: 'ADC', category: 'ic', pins: { IN: [0, 75, 'left', 'in'], OUT: [150, 75, 'right', 'out'] }, aliases: { ain: 'IN', dout: 'OUT', '1': 'IN', '2': 'OUT' }, body: [25, 37.5, 125, 112.5], prefix: 'U', labels: 'top', typeAliases: ['analog_to_digital'] },
   { type: 'dac', file: 'Miscellaneous-COM-DAC', name: 'DAC', category: 'ic', pins: { IN: [0, 75, 'left', 'in'], OUT: [150, 75, 'right', 'out'] }, aliases: { din: 'IN', aout: 'OUT', '1': 'IN', '2': 'OUT' }, body: [25, 37.5, 125, 112.5], prefix: 'U', labels: 'top', typeAliases: ['digital_to_analog'] },
+  // ---- sensors, audio, electromechanical
+  { type: 'photoresistor', file: 'Resistor-IEEE-Photoresistor', name: 'Photoresistor (LDR)', category: 'sensor', pins: two(), body: [6, 6, 125, 100], prefix: 'R', typeAliases: ['ldr', 'light_dependent_resistor'] },
+  { type: 'phototransistor', file: 'Transistor-COM-Phototransitor', name: 'Phototransistor', category: 'sensor', pins: { B: [0, 75, 'left', 'in'], C: [100, 0, 'up'], E: [100, 150, 'down'] }, aliases: { base: 'B', collector: 'C', emitter: 'E' }, body: [2, 2, 125, 125], prefix: 'Q', labels: 'right', required: ['C', 'E'] },
+  { type: 'optocoupler', file: 'Miscellaneous-COM-Optocoupler', name: 'Optocoupler', category: 'semiconductor', pins: { anode: [0, 25, 'left', 'in'], cathode: [0, 125, 'left', 'in'], C: [150, 25, 'right', 'out'], E: [150, 125, 'right', 'out'] }, aliases: { '1': 'anode', '2': 'cathode', '3': 'E', '4': 'C', a: 'anode', k: 'cathode', collector: 'C', emitter: 'E' }, body: [12, 6, 138, 144], prefix: 'U', labels: 'right', required: ['anode', 'cathode', 'C', 'E'], typeAliases: ['optoisolator', 'opto'] },
+  { type: 'relay', file: 'Relay-COM-COM-SPDT', name: 'Relay (SPDT)', category: 'electromechanical', pins: { A1: [0, 25, 'left', 'in'], A2: [150, 25, 'right', 'in'], COM: [0, 100, 'left'], NC: [150, 75, 'right'], NO: [150, 125, 'right'] }, aliases: { coil1: 'A1', coil2: 'A2', common: 'COM', nc: 'NC', no: 'NO', '1': 'A1', '2': 'A2', '3': 'COM', '4': 'NC', '5': 'NO' }, body: [12, 6, 140, 144], prefix: 'K', labels: 'top', required: ['A1', 'A2', 'COM'], typeAliases: ['relay_spdt'] },
+  { type: 'buzzer', file: 'Audio-COM-Buzzer', name: 'Buzzer', category: 'output_device', pins: two(), body: [25, 12, 125, 80], prefix: 'BZ', typeAliases: ['piezo'] },
+  { type: 'speaker', file: 'Audio-COM-Loudspeaker', name: 'Speaker', category: 'output_device', pins: { '1': [0, 50, 'left'], '2': [0, 100, 'left'] }, body: [37, 6, 125, 144], prefix: 'LS', typeAliases: ['loudspeaker'] },
+  { type: 'lamp', file: 'Miscellaneous-COM-Lamp-Indicator', name: 'Indicator lamp', category: 'output_device', pins: two(), body: [25, 25, 125, 125], prefix: 'LMP', typeAliases: ['bulb', 'indicator'] },
+  { type: 'schmitt_trigger', file: 'IC-COM-Schmitt', name: 'Schmitt trigger', category: 'digital', pins: GATE1, aliases: GATE1_ALIASES, body: [25, 25, 125, 125], prefix: 'U', labels: 'top', typeAliases: ['schmitt'] },
+  // ---- ground variants (same drawing, different rail name)
+  { type: 'agnd', file: 'Ground-COM-General', name: 'Analog ground', category: 'power', pins: { '1': [75, 0, 'up'] }, aliases: { gnd: '1' }, body: [25, 70, 125, 128], rail: 'ground', text: { x: 30, y: 58, anchor: 'middle', default: 'AGND' }, typeAliases: ['analog_ground'] },
+  { type: 'dgnd', file: 'Ground-COM-General', name: 'Digital ground', category: 'power', pins: { '1': [75, 0, 'up'] }, aliases: { gnd: '1' }, body: [25, 70, 125, 128], rail: 'ground', text: { x: 30, y: 58, anchor: 'middle', default: 'DGND' }, typeAliases: ['digital_ground'] },
   // ---- power markers
   { type: 'ground', file: 'Ground-COM-General', name: 'Ground', category: 'power', pins: { '1': [75, 0, 'up'] }, aliases: { gnd: '1' }, body: [25, 70, 125, 128], rail: 'ground', typeAliases: ['gnd', 'earth'] },
 ];
@@ -144,6 +156,7 @@ for (const m of M) {
     ...(m.required ? { required: m.required } : {}),
     ...(m.source ? { source: true } : {}),
     ...(m.rail ? { rail: m.rail } : {}),
+    ...(m.text ? { text: m.text } : {}),
     ...(m.defaultRotation ? { defaultRotation: m.defaultRotation } : {}),
     ...(m.typeAliases ? { typeAliases: m.typeAliases } : {}),
     origin: { ...LIB, file: `SVG/${m.file}.svg`, ...(m.derived ? { modified: 'enable pin added by CircuitForge' } : {}), ...(m.svg ? { modified: 'redrawn vertically (positive up) from the upstream geometry' } : {}), modified_note: 'scaled 0.4, stroke normalized to currentColor' },

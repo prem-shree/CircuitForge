@@ -1,0 +1,39 @@
+{
+  "type": "ultrasonic_sensor",
+  "name": "Ultrasonic distance sensor",
+  "category": "sensor",
+  "kind": "box",
+  "label": "HC-SR04",
+  "pins": {
+    "left": [
+      "VCC",
+      "TRIG"
+    ],
+    "right": [
+      "ECHO"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "TRIG": "in",
+    "ECHO": "out"
+  },
+  "required": [
+    "VCC",
+    "GND"
+  ],
+  "typeAliases": [
+    "hcsr04",
+    "distance_sensor"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

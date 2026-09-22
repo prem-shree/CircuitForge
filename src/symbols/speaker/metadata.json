@@ -1,0 +1,38 @@
+{
+  "type": "speaker",
+  "name": "Speaker",
+  "category": "output_device",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 20,
+      "dir": "left"
+    },
+    "2": {
+      "x": 0,
+      "y": 40,
+      "dir": "left"
+    }
+  },
+  "body": {
+    "x": 14.8,
+    "y": 2.4,
+    "w": 35.2,
+    "h": 55.2
+  },
+  "prefix": "LS",
+  "typeAliases": [
+    "loudspeaker"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Audio-COM-Loudspeaker.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

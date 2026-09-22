@@ -1,0 +1,36 @@
+{
+  "type": "servo",
+  "name": "Servo motor",
+  "category": "output_device",
+  "kind": "box",
+  "label": "SERVO",
+  "pins": {
+    "left": [
+      "VCC",
+      "SIG"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "M",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "SIG": "in"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "SIG"
+  ],
+  "typeAliases": [
+    "servo_motor",
+    "sg90"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

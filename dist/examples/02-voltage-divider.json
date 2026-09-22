@@ -1,0 +1,47 @@
+{
+  "title": "Voltage Divider",
+  "education": {
+    "summary": "Two resistors in series split the supply in proportion to their values.",
+    "objectives": [
+      "Derive the divider formula",
+      "Predict the output voltage",
+      "Explain why loading changes the result"
+    ],
+    "theory": "The same current flows through both resistors, so Vout = Vin × R2 / (R1 + R2).",
+    "questions": [
+      "What is Vout here?",
+      "What happens to Vout if a 1 kΩ load is connected across R2?"
+    ]
+  },
+  "components": [
+    {
+      "id": "V1",
+      "type": "dc_source",
+      "value": "10V"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "2kΩ"
+    }
+  ],
+  "connections": [
+    [
+      "V1.positive",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "R2.1"
+    ],
+    [
+      "R2.2",
+      "V1.negative"
+    ]
+  ]
+}

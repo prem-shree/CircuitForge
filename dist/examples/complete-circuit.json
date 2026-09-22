@@ -1,0 +1,628 @@
+{
+  "$schema": "../schema/circuit.schema.json",
+  "version": "1.0",
+  "title": "Regulated 555 LED Blinker (complete reference)",
+  "description": "Reference circuit that exercises every field CircuitForge understands: a 9 V battery feeds a 5 V linear regulator, a 555 astable drives a MOSFET low-side switch for an LED, and a divider plus test point show measurement annotations. Read this file together with docs/JSON-SCHEMA.md.",
+  "metadata": {
+    "author": "CircuitForge",
+    "created": "2026-09-22",
+    "revision": "A",
+    "course": "Introductory electronics",
+    "difficulty": "beginner",
+    "tags": [
+      "power supply",
+      "555",
+      "mosfet",
+      "led"
+    ],
+    "license": "CC0-1.0",
+    "notes": "Every value below is a teaching value, not a production design."
+  },
+  "layout": {
+    "grid": 10,
+    "componentGap": 60,
+    "wireGap": 18,
+    "labelGap": 6,
+    "sectionGap": 100
+  },
+  "validation": {
+    "supplyVoltage": 5,
+    "rules": {
+      "OPAMP_SUPPLY_MISSING": "off",
+      "LED_NO_CURRENT_LIMIT": "error"
+    }
+  },
+  "simulation": {
+    "engine": "ngspice",
+    "analyses": [
+      {
+        "type": "transient",
+        "stop": "50ms",
+        "step": "10us"
+      },
+      {
+        "type": "operatingPoint"
+      }
+    ],
+    "expected": {
+      "frequency": "≈ 1.4 Hz",
+      "dutyCycle": "≈ 62 %",
+      "ledCurrent": "≈ 9 mA"
+    },
+    "models": {
+      "Q1": "IRLZ44N",
+      "U2": "NE555"
+    }
+  },
+  "education": {
+    "summary": "Power comes in on the left, is regulated in the middle, and drives the LED on the right. The 555 sets the blink rate; the MOSFET does the switching so the timer never carries the LED current.",
+    "objectives": [
+      "Read a schematic as power-in, processing, output",
+      "Compute a 555 astable frequency from R1, R2 and C3",
+      "Size an LED series resistor from the supply and forward voltage",
+      "Explain why the regulator needs capacitors on both sides"
+    ],
+    "theory": "The 555 charges C3 through R1 + R2 and discharges it through R2, so the output is high for 0.693·(R1+R2)·C3 and low for 0.693·R2·C3.",
+    "questions": [
+      "What happens to the blink rate if C3 is doubled?",
+      "Why can the LED not be driven straight from pin 3 without R5?",
+      "What is dissipated in U1 at 100 mA load?"
+    ],
+    "experiments": [
+      "Replace R2 with a 100 kΩ potentiometer and watch the duty cycle change.",
+      "Measure TP1 with a meter and compare it with the calculated divider output."
+    ],
+    "troubleshooting": [
+      "No blinking: check RST (pin 4) is tied to +5 V.",
+      "LED always on: the MOSFET gate may be floating — check R4.",
+      "Regulator hot: the input voltage is too high for the load current."
+    ]
+  },
+  "components": [
+    {
+      "id": "BT1",
+      "type": "battery",
+      "value": "9V",
+      "section": "power",
+      "position": {
+        "x": 60,
+        "y": 120
+      },
+      "rotation": 0,
+      "params": {
+        "chemistry": "alkaline",
+        "capacity": "550mAh",
+        "rating": {
+          "voltage": "9V"
+        }
+      },
+      "bom": {
+        "mpn": "6LR61",
+        "manufacturer": "Generic",
+        "quantity": 1,
+        "supplier": "Local",
+        "price": "2.50"
+      },
+      "education": {
+        "purpose": "Portable supply for the whole board."
+      }
+    },
+    {
+      "id": "SW1",
+      "type": "switch",
+      "value": "ON/OFF",
+      "section": "power",
+      "params": {
+        "rating": {
+          "current": "1A"
+        },
+        "footprint": "SPST slide"
+      }
+    },
+    {
+      "id": "U1",
+      "type": "voltage_regulator",
+      "value": "LM7805",
+      "label": "REG",
+      "section": "power",
+      "params": {
+        "rating": {
+          "current": "1A",
+          "dropout": "2V"
+        },
+        "footprint": "TO-220"
+      },
+      "bom": {
+        "mpn": "LM7805CT",
+        "manufacturer": "TI",
+        "quantity": 1
+      },
+      "education": {
+        "purpose": "Turns the 9 V battery into a stable 5 V rail.",
+        "mistakes": [
+          "Swapping IN and OUT",
+          "Leaving out C1/C2"
+        ]
+      }
+    },
+    {
+      "id": "C1",
+      "type": "capacitor_polarized",
+      "value": "330nF",
+      "params": {
+        "tolerance": "20%",
+        "rating": {
+          "voltage": "25V"
+        }
+      }
+    },
+    {
+      "id": "C2",
+      "type": "capacitor",
+      "value": "100nF",
+      "params": {
+        "tolerance": "10%",
+        "footprint": "0805"
+      }
+    },
+    {
+      "id": "U2",
+      "type": "timer_555",
+      "value": "NE555",
+      "section": "process",
+      "params": {
+        "rating": {
+          "voltage": "4.5-15V",
+          "outputCurrent": "200mA"
+        },
+        "footprint": "DIP-8"
+      },
+      "bom": {
+        "mpn": "NE555P",
+        "manufacturer": "TI",
+        "quantity": 1,
+        "price": "0.40"
+      },
+      "education": {
+        "purpose": "Astable oscillator that sets the blink rate."
+      }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "10kΩ",
+      "params": {
+        "tolerance": "1%",
+        "rating": {
+          "power": "0.25W"
+        },
+        "footprint": "0805"
+      }
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "47kΩ",
+      "params": {
+        "tolerance": "1%",
+        "rating": {
+          "power": "0.25W"
+        }
+      }
+    },
+    {
+      "id": "C3",
+      "type": "capacitor",
+      "value": "10µF",
+      "params": {
+        "tolerance": "20%",
+        "rating": {
+          "voltage": "16V"
+        }
+      }
+    },
+    {
+      "id": "C4",
+      "type": "capacitor",
+      "value": "10nF",
+      "education": {
+        "purpose": "Decouples the control-voltage pin so the thresholds stay clean."
+      }
+    },
+    {
+      "id": "R3",
+      "type": "resistor",
+      "value": "100Ω",
+      "section": "process",
+      "education": {
+        "purpose": "Limits the peak gate-charging current from the 555 output."
+      }
+    },
+    {
+      "id": "R4",
+      "type": "resistor",
+      "value": "100kΩ",
+      "education": {
+        "purpose": "Holds the gate low so the MOSFET is off when the timer is not driving."
+      }
+    },
+    {
+      "id": "Q1",
+      "type": "nmos",
+      "value": "IRLZ44N",
+      "section": "output",
+      "pinTypes": {
+        "G": "in"
+      },
+      "params": {
+        "rating": {
+          "vds": "55V",
+          "id": "47A",
+          "rdsOn": "0.022Ω"
+        },
+        "footprint": "TO-220"
+      },
+      "education": {
+        "purpose": "Low-side switch: the logic-level gate means 5 V is enough to turn it fully on."
+      }
+    },
+    {
+      "id": "R5",
+      "type": "resistor",
+      "value": "330Ω",
+      "section": "output",
+      "education": {
+        "purpose": "Sets the LED current: (5 V − 2 V) / 330 Ω ≈ 9 mA."
+      }
+    },
+    {
+      "id": "D1",
+      "type": "led",
+      "value": "Red",
+      "section": "output",
+      "params": {
+        "rating": {
+          "forwardVoltage": "2.0V",
+          "current": "20mA"
+        }
+      }
+    },
+    {
+      "id": "RA",
+      "type": "resistor",
+      "value": "10kΩ",
+      "rotation": 90,
+      "section": "output",
+      "education": {
+        "purpose": "Upper leg of the monitoring divider (drawn rotated to show explicit rotation)."
+      }
+    },
+    {
+      "id": "RB",
+      "type": "resistor",
+      "value": "10kΩ",
+      "rotation": 90,
+      "section": "output"
+    },
+    {
+      "id": "TP1",
+      "type": "test_point",
+      "label": "TP1",
+      "section": "output"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+5V"
+    },
+    {
+      "id": "VBAT",
+      "type": "net_label",
+      "value": "VBAT"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    {
+      "pins": [
+        "BT1.positive",
+        "SW1.1"
+      ],
+      "net": "BATT+",
+      "class": "power"
+    },
+    {
+      "pins": [
+        "SW1.2",
+        "U1.IN",
+        "C1.positive",
+        "VBAT"
+      ],
+      "net": "VBAT",
+      "class": "power"
+    },
+    {
+      "pins": [
+        "C1.negative",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "BT1.negative",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "U1.GND",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "U1.OUT",
+        "C2.1",
+        "VCC"
+      ],
+      "net": "+5V",
+      "class": "power"
+    },
+    {
+      "pins": [
+        "C2.2",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "U2.VCC",
+        "U2.RST",
+        "R1.1",
+        "VCC"
+      ],
+      "net": "+5V",
+      "class": "power"
+    },
+    {
+      "pins": [
+        "R1.2",
+        "R2.1",
+        "U2.DIS"
+      ],
+      "net": "TIMER_A"
+    },
+    {
+      "pins": [
+        "R2.2",
+        "U2.THR",
+        "U2.TRIG",
+        "C3.1"
+      ],
+      "net": "TIMER_B"
+    },
+    {
+      "pins": [
+        "C3.2",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "U2.CV",
+        "C4.1"
+      ]
+    },
+    {
+      "pins": [
+        "C4.2",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "U2.GND",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "U2.OUT",
+        "R3.1"
+      ],
+      "net": "BLINK",
+      "class": "signal"
+    },
+    {
+      "pins": [
+        "R3.2",
+        "Q1.G",
+        "R4.1"
+      ],
+      "net": "GATE"
+    },
+    {
+      "pins": [
+        "R4.2",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "Q1.S",
+        "GND"
+      ],
+      "class": "ground"
+    },
+    {
+      "pins": [
+        "Q1.D",
+        "D1.cathode"
+      ],
+      "net": "LED-"
+    },
+    {
+      "pins": [
+        "D1.anode",
+        "R5.2"
+      ]
+    },
+    {
+      "pins": [
+        "R5.1",
+        "VCC"
+      ],
+      "class": "power"
+    },
+    {
+      "pins": [
+        "RA.1",
+        "VCC"
+      ],
+      "class": "power"
+    },
+    {
+      "pins": [
+        "RA.2",
+        "RB.1",
+        "TP1"
+      ],
+      "net": "VMON"
+    },
+    {
+      "pins": [
+        "RB.2",
+        "GND"
+      ],
+      "class": "ground"
+    }
+  ],
+  "junctions": [
+    {
+      "net": "TIMER_B",
+      "note": "THR, TRIG and C3 meet here — the dot is generated automatically"
+    }
+  ],
+  "measurements": [
+    {
+      "type": "voltage",
+      "at": "VMON",
+      "label": "V(TP1)",
+      "expected": "2.5 V",
+      "note": "half of the 5 V rail"
+    },
+    {
+      "type": "voltage",
+      "at": "BLINK",
+      "label": "V(pin 3)",
+      "expected": "0 / 5 V square wave"
+    },
+    {
+      "type": "current",
+      "at": "R5.2",
+      "label": "I(LED)",
+      "expected": "9 mA"
+    }
+  ],
+  "annotations": [
+    {
+      "text": "Power section: 9 V in, 5 V out",
+      "at": "U1",
+      "dy": -56
+    },
+    {
+      "text": "Astable: f = 1.44 / ((R1 + 2·R2)·C3)",
+      "at": "U2",
+      "dy": -62
+    },
+    {
+      "text": "Low-side switch keeps the\nLED current out of the timer",
+      "at": "Q1",
+      "dx": 0,
+      "dy": 70
+    }
+  ],
+  "bom": [
+    {
+      "reference": "BT1",
+      "description": "9 V alkaline battery",
+      "quantity": 1
+    },
+    {
+      "reference": "U1",
+      "description": "LM7805 5 V linear regulator, TO-220",
+      "quantity": 1
+    },
+    {
+      "reference": "U2",
+      "description": "NE555 timer, DIP-8",
+      "quantity": 1
+    },
+    {
+      "reference": "Q1",
+      "description": "IRLZ44N logic-level N-MOSFET",
+      "quantity": 1
+    },
+    {
+      "reference": "R1,R4",
+      "description": "Resistor 10 kΩ / 100 kΩ 1/4 W",
+      "quantity": 2
+    },
+    {
+      "reference": "R2",
+      "description": "Resistor 47 kΩ 1/4 W",
+      "quantity": 1
+    },
+    {
+      "reference": "R3,R5",
+      "description": "Resistor 100 Ω / 330 Ω 1/4 W",
+      "quantity": 2
+    },
+    {
+      "reference": "RA,RB",
+      "description": "Resistor 10 kΩ 1 % (monitor divider)",
+      "quantity": 2
+    },
+    {
+      "reference": "C1",
+      "description": "330 nF electrolytic 25 V",
+      "quantity": 1
+    },
+    {
+      "reference": "C2,C4",
+      "description": "100 nF / 10 nF ceramic",
+      "quantity": 2
+    },
+    {
+      "reference": "C3",
+      "description": "10 µF electrolytic 16 V",
+      "quantity": 1
+    },
+    {
+      "reference": "D1",
+      "description": "Red LED 5 mm",
+      "quantity": 1
+    },
+    {
+      "reference": "SW1",
+      "description": "SPST slide switch",
+      "quantity": 1
+    },
+    {
+      "reference": "TP1",
+      "description": "Test point",
+      "quantity": 1
+    }
+  ]
+}

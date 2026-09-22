@@ -1,0 +1,55 @@
+{
+  "title": "Series RLC Circuit",
+  "education": {
+    "summary": "Inductor and capacitor reactances cancel at resonance, leaving only the resistance.",
+    "objectives": [
+      "Compute the resonant frequency",
+      "Explain the Q factor"
+    ],
+    "theory": "f0 = 1 / (2π√(LC)). At f0 the impedance is at its minimum and the current peaks.",
+    "questions": [
+      "What is f0 for these values?",
+      "What happens to the current well above resonance?"
+    ]
+  },
+  "components": [
+    {
+      "id": "V1",
+      "type": "ac_source",
+      "value": "5V 10kHz"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "50Ω"
+    },
+    {
+      "id": "L1",
+      "type": "inductor",
+      "value": "1mH"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "value": "220nF"
+    }
+  ],
+  "connections": [
+    [
+      "V1.positive",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "L1.1"
+    ],
+    [
+      "L1.2",
+      "C1.1"
+    ],
+    [
+      "C1.2",
+      "V1.negative"
+    ]
+  ]
+}

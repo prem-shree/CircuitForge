@@ -1,0 +1,174 @@
+{
+  "title": "SPI Bus with Two Peripherals",
+  "description": "Shared clock and data lines with one chip-select per peripheral.",
+  "education": {
+    "summary": "SPI uses a shared clock, MOSI and MISO plus one chip select per device. Only the selected device drives MISO, which is why chip selects must never be active together.",
+    "objectives": [
+      "Wire a shared SPI bus",
+      "Explain chip select",
+      "Know why two selected devices conflict"
+    ]
+  },
+  "components": [
+    {
+      "id": "U1",
+      "type": "microcontroller",
+      "value": "Controller",
+      "pins": {
+        "left": [
+          "RST"
+        ],
+        "right": [
+          "SCK",
+          "MOSI",
+          "MISO",
+          "CS1",
+          "CS2"
+        ],
+        "top": [
+          "VCC"
+        ],
+        "bottom": [
+          "GND"
+        ]
+      },
+      "pinTypes": {
+        "SCK": "out",
+        "MOSI": "out",
+        "MISO": "in",
+        "CS1": "out",
+        "CS2": "out"
+      }
+    },
+    {
+      "id": "U2",
+      "type": "memory",
+      "value": "Flash",
+      "pins": {
+        "left": [
+          "SCK",
+          "SI",
+          "~CS"
+        ],
+        "right": [
+          "SO"
+        ],
+        "top": [
+          "VCC"
+        ],
+        "bottom": [
+          "GND"
+        ]
+      },
+      "pinTypes": {
+        "SO": "tristate"
+      }
+    },
+    {
+      "id": "U3",
+      "type": "generic_ic",
+      "value": "MCP3008",
+      "pins": {
+        "left": [
+          "SCK",
+          "DIN",
+          "~CS"
+        ],
+        "right": [
+          "DOUT"
+        ],
+        "top": [
+          "VCC"
+        ],
+        "bottom": [
+          "GND"
+        ]
+      },
+      "pinTypes": {
+        "DOUT": "tristate"
+      },
+      "label": "MCP3008"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+3V3"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    {
+      "pins": [
+        "U1.SCK",
+        "U2.SCK",
+        "U3.SCK"
+      ],
+      "net": "SCK",
+      "class": "clock"
+    },
+    {
+      "pins": [
+        "U1.MOSI",
+        "U2.SI",
+        "U3.DIN"
+      ],
+      "net": "MOSI",
+      "class": "bus"
+    },
+    {
+      "pins": [
+        "U1.MISO",
+        "U2.SO",
+        "U3.DOUT"
+      ],
+      "net": "MISO",
+      "class": "bus"
+    },
+    [
+      "U1.CS1",
+      "U2.~CS"
+    ],
+    [
+      "U1.CS2",
+      "U3.~CS"
+    ],
+    [
+      "U1.RST",
+      "VCC"
+    ],
+    [
+      "U1.VCC",
+      "VCC"
+    ],
+    [
+      "U2.VCC",
+      "VCC"
+    ],
+    [
+      "U3.VCC",
+      "VCC"
+    ],
+    [
+      "U1.GND",
+      "GND"
+    ],
+    [
+      "U2.GND",
+      "GND"
+    ],
+    [
+      "U3.GND",
+      "GND"
+    ]
+  ],
+  "annotations": [
+    {
+      "text": "Only one chip select low at a time",
+      "at": "MISO",
+      "dy": -34
+    }
+  ]
+}

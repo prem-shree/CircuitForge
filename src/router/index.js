@@ -9,7 +9,7 @@
 // 4-way junctions (allowed at a cost). If a net can't be routed strictly, a relaxed pass allows
 // violations at high cost; failing that, an L-shaped fallback is drawn and a
 // ROUTING_FAILURE warning is raised.
-import { GRID, DIRS, OPPOSITE, unionRect, inflate } from '../utils/geometry.js';
+import { GRID, DIRS, OPPOSITE, unionRect, inflate, segHitsRect } from '../utils/geometry.js';
 
 const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const DIR_INDEX = { right: 0, down: 1, left: 2, up: 3 };
@@ -23,7 +23,7 @@ export function routeCircuit(nl, instances) {
   let bounds = null;
   for (const I of insts) bounds = unionRect(bounds, I.extent);
   bounds = bounds || { x: 0, y: 0, w: 0, h: 0 };
-  const PAD = 80;
+  const PAD = 140; // routing margin around the drawing: room to route around parts
   const x0 = Math.floor((bounds.x - PAD) / GRID) * GRID;
   const y0 = Math.floor((bounds.y - PAD) / GRID) * GRID;
   const W = Math.ceil((bounds.x + bounds.w + PAD - x0) / GRID) + 1;
@@ -39,6 +39,9 @@ export function routeCircuit(nl, instances) {
   const soft = new Float32Array(N);
   const pinOwner = new Int32Array(N).fill(-1); // routed net index, or -2 for "no one"
   const pinEntry = new Int8Array(N).fill(-1);
+  // The cell straight in front of a pin is that pin's escape track: no other net
+  // may take it, otherwise the pin can end up unreachable and route badly.
+  const approach = new Int32Array(N).fill(-1);
   const occH = new Int32Array(N), occV = new Int32Array(N); // net index + 1
 
   const fillRect = (r, fn) => {
@@ -85,6 +88,8 @@ export function routeCircuit(nl, instances) {
       blocked[c] = 1;
       pinOwner[c] = ni;
       pinEntry[c] = DIR_INDEX[OPPOSITE[p.dir]];
+      const ac = cellOf(p.x + d.x * GRID, p.y + d.y * GRID);
+      if (ac >= 0 && approach[ac] === -1 && pinOwner[ac] === -1) approach[ac] = ni;
     }
     for (const m of I.markers) {
       fillRect(inflate(m.bbox, 3), (c) => { if (pinOwner[c] === -1) blocked[c] = 1; });
@@ -133,7 +138,7 @@ export function routeCircuit(nl, instances) {
     return o < 0 ? 0 : bits[o].get(c) || 0;
   };
 
-  function search(ni, start, startDir, tree, relaxed) {
+  function search(ni, start, startDirs, tree, relaxed) {
     gen++;
     heap.length = 0;
     let bx1 = Infinity, by1 = Infinity, bx2 = -Infinity, by2 = -Infinity;
@@ -145,9 +150,11 @@ export function routeCircuit(nl, instances) {
       const x = c % W, y = (c / W) | 0;
       return Math.max(0, bx1 - x, x - bx2) + Math.max(0, by1 - y, y - by2);
     };
-    const s0 = start * 4 + startDir;
-    g[s0] = 0; stamp[s0] = gen; prev[s0] = -1;
-    push(h(start), s0);
+    for (const sd of startDirs) {
+      const s0 = start * 4 + sd;
+      g[s0] = 0; stamp[s0] = gen; prev[s0] = -1;
+      push(h(start), s0);
+    }
     let iter = 0;
     while (heap.length) {
       if (++iter > 400000) break;
@@ -167,6 +174,7 @@ export function routeCircuit(nl, instances) {
           cost += BEND;
           if (foreign(occH, c, ni) || foreign(occV, c, ni)) { if (!relaxed) continue; cost += VIOLATION; }
         }
+        if (approach[n] !== -1 && approach[n] !== ni) { if (!relaxed) continue; cost += VIOLATION; }
         const owner = pinOwner[n];
         if (owner !== -1) {
           if (owner !== ni || nd !== pinEntry[n]) { if (!relaxed || owner === ni) continue; cost += VIOLATION * 2; }
@@ -211,13 +219,70 @@ export function routeCircuit(nl, instances) {
 
   const failures = [];
   const paths = routed.map(() => []);
+  const trace = (end) => {
+    const cells = [];
+    for (let s = end; s >= 0; s = prev[s]) cells.push(s >> 2);
+    return cells.reverse();
+  };
+  // Manual wire hints from the JSON: fixed routes and waypoints.
+  const hintsByNet = new Map();
+  for (const hint of nl.hints || []) {
+    if (!netIndex.has(hint.net)) continue;
+    if (!hintsByNet.has(hint.net)) hintsByNet.set(hint.net, []);
+    hintsByNet.get(hint.net).push(hint);
+  }
+  const pinCell = (ni, e) => routed[ni].pins.find((p) => p.comp === e.comp && p.pin === e.pin);
+
   const order = routed.map((_, i) => i).sort((a, b) => span(routed[a].pins) - span(routed[b].pins));
   for (const ni of order) {
     const net = routed[ni];
     const pins = net.pins.filter((p) => p.cell >= 0);
-    const first = pins.reduce((m, p) => (p.x < m.x || (p.x === m.x && p.y < m.y) ? p : m), pins[0]);
-    const tree = new Set([first.cell]);
-    const todo = pins.filter((p) => p !== first);
+    const tree = new Set();
+
+    // (a) manual routes / waypoints first: they define part of the net's tree.
+    for (const hint of hintsByNet.get(net.id) || []) {
+      const ends = hint.ends.map((e) => pinCell(ni, e)).filter((p) => p && p.cell >= 0);
+      if (ends.length < 2) continue;
+      const a = ends[0], b = ends[ends.length - 1];
+      let cells = null;
+      if (hint.route) {
+        const rc = hint.route.map((p) => cellOf(p.x, p.y)).filter((c) => c >= 0);
+        if (rc.length) {
+          const full = [a.cell, ...rc, b.cell].filter((c, i, arr) => i === 0 || c !== arr[i - 1]);
+          cells = expandCells(full, W);
+        }
+      } else if (hint.waypoints) {
+        const stops = [a.cell, ...hint.waypoints.map((p) => cellOf(p.x, p.y)).filter((c) => c >= 0), b.cell];
+        cells = [];
+        let okAll = true;
+        for (let i = 0; i + 1 < stops.length; i++) {
+          const from = stops[i], to = stops[i + 1];
+          if (from === to) continue;
+          const startDirs = i === 0 ? [DIR_INDEX[a.dir]] : [0, 1, 2, 3];
+          const target = new Set([to]);
+          let end = search(ni, from, startDirs, target, false);
+          if (end < 0) end = search(ni, from, startDirs, target, true);
+          if (end < 0) { okAll = false; break; }
+          const leg = trace(end);
+          cells.push(...(cells.length ? leg.slice(1) : leg));
+        }
+        if (!okAll || cells.length < 2) {
+          cells = null;
+          failures.push({ net: net.id, comp: a.comp, pin: a.pin, reason: 'waypoints' });
+        }
+      }
+      if (cells && cells.length > 1) {
+        commitPath(ni, cells);
+        for (const c of cells) tree.add(c);
+        paths[ni].push(cells.map((c) => ({ x: cx(c), y: cy(c) })));
+      }
+    }
+
+    if (!tree.size) {
+      const first = pins.reduce((m, p) => (p.x < m.x || (p.x === m.x && p.y < m.y) ? p : m), pins[0]);
+      tree.add(first.cell);
+    }
+    const todo = pins.filter((p) => !tree.has(p.cell));
     while (todo.length) {
       // nearest unconnected pin to the tree
       let bi = 0, bd = Infinity;
@@ -229,14 +294,12 @@ export function routeCircuit(nl, instances) {
       });
       const p = todo.splice(bi, 1)[0];
       if (tree.has(p.cell)) continue;
-      const sd = DIR_INDEX[p.dir];
+      const sd = [DIR_INDEX[p.dir]];
       let end = search(ni, p.cell, sd, tree, false);
       if (end < 0) end = search(ni, p.cell, sd, tree, true);
       let cells;
       if (end >= 0) {
-        cells = [];
-        for (let s = end; s >= 0; s = prev[s]) cells.push(s >> 2);
-        cells.reverse();
+        cells = trace(end);
       } else {
         failures.push({ net: net.id, comp: p.comp, pin: p.pin });
         const t = [...tree][0];
@@ -263,7 +326,27 @@ export function routeCircuit(nl, instances) {
       crossings.push({ x: cx(c), y: cy(c), h: routed[occH[c] - 1].id, v: routed[occV[c] - 1].id });
     }
   }
-  return { nets, junctions, crossings, failures };
+  // A relaxed route may have cut through a body or another net: report it.
+  // ponytail: O(segments x parts) scan; fine at schematic scale.
+  const violations = [];
+  for (const [id, net] of nets) {
+    for (const seg of net.segments) {
+      for (const I of insts) {
+        if (segHitsRect(seg, inflate(I.body, -1.5))) { violations.push({ code: 'WIRE_THROUGH_COMPONENT', net: id, comp: I.id }); break; }
+      }
+    }
+  }
+  const all = [...nets.values()].flatMap((nn) => nn.segments.map((sg) => ({ ...sg, net: nn.id })));
+  for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
+    const a = all[i], b = all[j];
+    if (a.net === b.net) continue;
+    const overlap = (a.y1 === a.y2 && b.y1 === b.y2 && a.y1 === b.y1 &&
+        Math.min(Math.max(a.x1, a.x2), Math.max(b.x1, b.x2)) > Math.max(Math.min(a.x1, a.x2), Math.min(b.x1, b.x2)))
+      || (a.x1 === a.x2 && b.x1 === b.x2 && a.x1 === b.x1 &&
+        Math.min(Math.max(a.y1, a.y2), Math.max(b.y1, b.y2)) > Math.max(Math.min(a.y1, a.y2), Math.min(b.y1, b.y2)));
+    if (overlap) violations.push({ code: 'WIRE_OVERLAP', net: a.net, other: b.net });
+  }
+  return { nets, junctions, crossings, failures, violations };
 }
 
 function span(pins) {

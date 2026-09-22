@@ -1,0 +1,41 @@
+{
+  "type": "oscillator",
+  "name": "Crystal oscillator",
+  "category": "passive",
+  "kind": "box",
+  "label": "OSC",
+  "pins": {
+    "left": [
+      "EN"
+    ],
+    "right": [
+      "OUT"
+    ],
+    "top": [
+      "VCC"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "Y",
+  "aliases": {
+    "output": "OUT",
+    "clk": "OUT",
+    "enable": "EN"
+  },
+  "required": [
+    "OUT",
+    "VCC",
+    "GND"
+  ],
+  "typeAliases": [
+    "clock_oscillator",
+    "can_oscillator"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

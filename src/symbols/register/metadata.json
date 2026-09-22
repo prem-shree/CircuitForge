@@ -22,7 +22,6 @@
   },
   "prefix": "U",
   "typeAliases": [
-    "shift_register",
     "latch_register"
   ],
   "origin": {

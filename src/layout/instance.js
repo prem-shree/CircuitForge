@@ -14,7 +14,7 @@ function label(text, x, y, anchor, cls, size) {
   return { text: String(text), x, y, anchor, cls, size, box: textBox(text, x, y, anchor, size) };
 }
 
-export function makeInstance(part, x, y, rot, mirror, nets) {
+export function makeInstance(part, x, y, rot, mirror, nets, cfg = {}) {
   const s = part.sym;
   const t = { x, y, rot, mirror, ox: s.origin.x, oy: s.origin.y };
   const pins = {};
@@ -24,9 +24,10 @@ export function makeInstance(part, x, y, rot, mirror, nets) {
   }
   const inst = { id: part.id, part, t, x, y, rot, mirror, pins, body: xformRect(s.body, t) };
   inst.markers = buildMarkers(inst, nets);
-  const { primary, alt } = buildLabels(inst);
-  inst.labels = primary;
-  inst.labelAlt = alt;
+  const sets = buildLabels(inst, cfg.labelGap ?? 6).filter(Boolean);
+  inst.labelSets = sets;
+  inst.labels = sets[0] || [];
+  inst.labelAlt = sets[1] || [];
   computeExtent(inst);
   return inst;
 }
@@ -134,13 +135,13 @@ function buildLabelFlag(m, at, face) {
   m.bbox = boundsOf([...pts.map(([px, py]) => ({ x: px, y: py })), ...(m.box ? [{ x: m.box.x, y: m.box.y }, { x: m.box.x + m.box.w, y: m.box.y + m.box.h }] : [])]);
 }
 
-function buildLabels(inst) {
+function buildLabels(inst, gap) {
   const s = inst.part.sym, c = inst.part.comp;
   const b = inst.body;
   const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
   const ref = c.label ?? c.id;
   const value = c.value != null && c.value !== '' ? String(c.value) : null;
-  const primary = [], alt = [];
+  const sets = [];
 
   if (s.text) {
     const p = xform(s.text, inst.t);
@@ -151,14 +152,16 @@ function buildLabels(inst) {
     if (s.terminal) {
       anchor = pinDir === 'right' ? 'end' : pinDir === 'left' ? 'start' : 'middle';
       const q = anchor === 'end' ? { x: b.x - 4, y: cy + 4 } : anchor === 'start' ? { x: b.x + b.w + 4, y: cy + 4 } : { x: cx, y: pinDir === 'down' ? b.y - 4 : b.y + b.h + 12 };
-      primary.push(label(txt, q.x, q.y, anchor, 'text', REF_SIZE));
-    } else primary.push(label(txt, p.x, p.y + 4, anchor, 'text', REF_SIZE));
-    return { primary, alt };
+      sets.push([label(txt, q.x, q.y, anchor, 'text', REF_SIZE)]);
+      sets.push([label(txt, cx, b.y - gap, 'middle', 'text', REF_SIZE)]);
+      sets.push([label(txt, cx, b.y + b.h + gap + 9, 'middle', 'text', REF_SIZE)]);
+    } else sets.push([label(txt, p.x, p.y + 4, anchor, 'text', REF_SIZE)]);
+    return sets;
   }
-  if (s.labels === 'none') return { primary, alt };
+  if (s.labels === 'none') return [[]];
 
   const side = (right) => {
-    const x = right ? b.x + b.w + 6 : b.x - 6;
+    const x = right ? b.x + b.w + gap : b.x - gap;
     const a = right ? 'start' : 'end';
     const out = [];
     if (value) {
@@ -169,24 +172,42 @@ function buildLabels(inst) {
   };
   const horizontalPins = s.twoTerminal && ['left', 'right'].includes(inst.pins[s.pinOrder[0]].dir);
 
+  // Stacked above / below / split, used by the flat orientations.
+  const stack = (where) => {
+    const out = [];
+    if (where === 'split') {
+      out.push(label(ref, cx, b.y - gap, 'middle', 'ref', REF_SIZE));
+      if (value) out.push(label(value, cx, b.y + b.h + gap + 7, 'middle', 'value', VALUE_SIZE));
+    } else if (where === 'above') {
+      out.push(label(ref, cx, b.y - (value ? gap + 12 : gap), 'middle', 'ref', REF_SIZE));
+      if (value) out.push(label(value, cx, b.y - gap, 'middle', 'value', VALUE_SIZE));
+    } else {
+      out.push(label(ref, cx, b.y + b.h + gap + 9, 'middle', 'ref', REF_SIZE));
+      if (value) out.push(label(value, cx, b.y + b.h + gap + 21, 'middle', 'value', VALUE_SIZE));
+    }
+    return out;
+  };
+
   if (s.twoTerminal && horizontalPins) {
-    primary.push(label(ref, cx, b.y - 5, 'middle', 'ref', REF_SIZE));
-    if (value) primary.push(label(value, cx, b.y + b.h + 12, 'middle', 'value', VALUE_SIZE));
-    alt.push(label(ref, cx, b.y - (value ? 17 : 5), 'middle', 'ref', REF_SIZE));
-    if (value) alt.push(label(value, cx, b.y - 5, 'middle', 'value', VALUE_SIZE));
+    sets.push(stack('split'), stack('above'), stack('below'), side(true), side(false));
   } else if (s.twoTerminal || s.labels === 'right') {
-    primary.push(...side(true));
-    alt.push(...side(false));
+    sets.push(side(true), side(false), stack('above'), stack('below'));
   } else if (s.labels === 'topright') {
-    const x = cx + 16;
-    primary.push(label(ref, x, b.y + 3, 'start', 'ref', REF_SIZE));
-    if (value) primary.push(label(value, x, b.y + 15, 'start', 'value', VALUE_SIZE));
+    const corner = (x, anchor) => {
+      const out = [label(ref, x, b.y + 3, anchor, 'ref', REF_SIZE)];
+      if (value) out.push(label(value, x, b.y + 15, anchor, 'value', VALUE_SIZE));
+      return out;
+    };
+    sets.push(corner(cx + 16, 'start'), corner(b.x - gap, 'end'), stack('above'));
   } else if (s.labels === 'box') {
-    primary.push(label(ref, b.x + b.w, b.y - 5, 'end', 'ref', REF_SIZE));
-    // value is drawn inside the box by the symbol generator
+    // the value is drawn inside the box by the symbol generator
+    sets.push(
+      [label(ref, b.x + b.w, b.y - gap, 'end', 'ref', REF_SIZE)],
+      [label(ref, b.x, b.y - gap, 'start', 'ref', REF_SIZE)],
+      [label(ref, b.x + b.w, b.y + b.h + gap + 9, 'end', 'ref', REF_SIZE)],
+    );
   } else {
-    primary.push(label(ref, cx, b.y - 5, 'middle', 'ref', REF_SIZE));
-    if (value) primary.push(label(value, cx, b.y + b.h + 12, 'middle', 'value', VALUE_SIZE));
+    sets.push(stack('split'), stack('above'), stack('below'), side(true));
   }
-  return { primary, alt };
+  return sets;
 }

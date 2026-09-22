@@ -41,6 +41,48 @@ export function validateCircuit(input) {
     errors.push({ code: 'INVALID_SCHEMA', path: 'connections', message: '"connections" must be an array.' });
   }
 
+  // ---- optional top-level blocks (metadata, layout, teaching material, …)
+  const TOP_KEYS = ['$schema', 'version', 'title', 'name', 'description', 'metadata', 'layout', 'validation', 'simulation', 'education', 'components', 'connections', 'nets', 'junctions', 'annotations', 'measurements', 'bom', 'notes'];
+  for (const key of Object.keys(circuit)) {
+    if (!TOP_KEYS.includes(key)) {
+      warnings.push({ code: 'UNKNOWN_FIELD', path: key, message: `Unknown top-level field "${key}". Known fields: ${TOP_KEYS.join(', ')}.` });
+    }
+  }
+  const objectField = (key) => {
+    const v = circuit[key];
+    if (v !== undefined && (typeof v !== 'object' || Array.isArray(v) || v === null)) {
+      errors.push({ code: 'INVALID_SCHEMA', path: key, message: `"${key}" must be an object.` });
+    }
+  };
+  ['metadata', 'layout', 'validation', 'simulation', 'education', 'nets'].forEach(objectField);
+  for (const key of ['annotations', 'measurements', 'bom', 'junctions']) {
+    if (circuit[key] !== undefined && !Array.isArray(circuit[key])) {
+      errors.push({ code: 'INVALID_SCHEMA', path: key, message: `"${key}" must be an array.` });
+    }
+  }
+  if (circuit.layout && typeof circuit.layout === 'object') {
+    for (const [k, v] of Object.entries(circuit.layout)) {
+      if (!['grid', 'componentGap', 'wireGap', 'labelGap', 'sectionGap', 'direction'].includes(k)) {
+        warnings.push({ code: 'UNKNOWN_FIELD', path: `layout.${k}`, message: `Unknown layout option "${k}".` });
+      } else if (k !== 'direction' && v !== undefined && !Number.isFinite(v)) {
+        errors.push({ code: 'INVALID_PROPERTY', path: `layout.${k}`, message: `layout.${k} must be a number.` });
+      }
+    }
+  }
+  if (circuit.validation?.rules && typeof circuit.validation.rules === 'object') {
+    for (const [code, level] of Object.entries(circuit.validation.rules)) {
+      if (!['off', 'info', 'warning', 'error'].includes(level)) {
+        errors.push({ code: 'INVALID_PROPERTY', path: `validation.rules.${code}`, message: `Rule level for ${code} must be "off", "info", "warning" or "error".` });
+      }
+    }
+  }
+  for (const [i, m] of (Array.isArray(circuit.measurements) ? circuit.measurements : []).entries()) {
+    if (!m || typeof m !== 'object') errors.push({ code: 'INVALID_SCHEMA', path: `measurements[${i}]`, message: 'Each measurement must be an object with "type" and "at".' });
+    else if (m.type && !['voltage', 'current', 'resistance', 'frequency'].includes(String(m.type).toLowerCase())) {
+      warnings.push({ code: 'INVALID_PROPERTY', path: `measurements[${i}].type`, message: `Unknown measurement type "${m.type}"; expected voltage, current, resistance or frequency.` });
+    }
+  }
+
   const comps = new Map();
   circuit.components.forEach((c, i) => {
     const path = `components[${i}]`;
@@ -83,6 +125,22 @@ export function validateCircuit(input) {
     }
     if (c.position !== undefined && !(c.position && Number.isFinite(c.position.x) && Number.isFinite(c.position.y))) {
       errors.push({ code: 'INVALID_PROPERTY', component: id, path: `${path}.position`, message: `Position of ${id} must be {"x": number, "y": number}.` });
+    }
+    if (c.section !== undefined && !['input', 'process', 'output', 'power'].includes(c.section)) {
+      errors.push({ code: 'INVALID_PROPERTY', component: id, path: `${path}.section`, message: `Section of ${id} must be input, process, output or power.` });
+    }
+    for (const key of ['params', 'bom', 'education', 'pinTypes', 'simulation']) {
+      if (c[key] !== undefined && (typeof c[key] !== 'object' || Array.isArray(c[key]) || c[key] === null)) {
+        errors.push({ code: 'INVALID_PROPERTY', component: id, path: `${path}.${key}`, message: `"${key}" of ${id} must be an object.` });
+      }
+    }
+    if (c.pinTypes && typeof c.pinTypes === 'object') {
+      const ETYPES = ['in', 'out', 'passive', 'power', 'power_in', 'power_out', 'bidirectional', 'tristate', 'open_collector', 'open_drain', 'unspecified'];
+      for (const [pin, et] of Object.entries(c.pinTypes)) {
+        if (!ETYPES.includes(et)) {
+          errors.push({ code: 'INVALID_PROPERTY', component: id, path: `${path}.pinTypes.${pin}`, message: `Electrical pin type "${et}" is not one of: ${ETYPES.join(', ')}.` });
+        }
+      }
     }
     comps.set(id, { comp: c, sym: resolveSymbol(c) });
   });
@@ -148,7 +206,34 @@ export function validateCircuit(input) {
       if (!connectedPins.has(e.comp)) connectedPins.set(e.comp, new Set());
       connectedPins.get(e.comp).add(e.pin);
     }
-    connections.push({ ends, name: conn.name, path });
+    // Optional wire hints: waypoints the router must pass through, or a fully
+    // manual orthogonal route. Both are validated here so the router can trust them.
+    const pts = (list, field) => {
+      if (!list) return null;
+      const out = [];
+      for (const p of list) {
+        const x = Array.isArray(p) ? p[0] : p?.x, y = Array.isArray(p) ? p[1] : p?.y;
+        if (!Number.isFinite(x) || !Number.isFinite(y)) {
+          errors.push({ code: 'INVALID_CONNECTION', path, message: `${path}.${field} must be points like [{"x":120,"y":80}] or [[120,80]].` });
+          return null;
+        }
+        out.push({ x: Math.round(x / 10) * 10, y: Math.round(y / 10) * 10 });
+      }
+      return out.length ? out : null;
+    };
+    const route = pts(conn.route, 'route');
+    if (route) {
+      for (let i = 1; i < route.length; i++) {
+        if (route[i].x !== route[i - 1].x && route[i].y !== route[i - 1].y) {
+          errors.push({ code: 'INVALID_CONNECTION', path, message: `${path}.route must be orthogonal: point ${i + 1} is diagonal from the previous one.` });
+          break;
+        }
+      }
+    }
+    if (conn.class && !['signal', 'power', 'ground', 'bus', 'analog', 'clock', 'differential'].includes(conn.class)) {
+      warnings.push({ code: 'INVALID_PROPERTY', path, message: `Unknown connection class "${conn.class}"; expected signal, power, ground, bus, analog, clock or differential.` });
+    }
+    connections.push({ ends, name: conn.name, path, class: conn.class, waypoints: pts(conn.waypoints, 'waypoints'), route, locked: conn.locked, label: conn.label });
   }
 
   for (const [id, entry] of comps) {

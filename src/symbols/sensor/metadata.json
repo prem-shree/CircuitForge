@@ -1,0 +1,38 @@
+{
+  "type": "sensor",
+  "name": "Generic sensor module",
+  "category": "sensor",
+  "kind": "box",
+  "label": "SENSOR",
+  "pins": {
+    "left": [
+      "VCC"
+    ],
+    "right": [
+      "OUT"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "SNS",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "OUT": "out"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "OUT"
+  ],
+  "typeAliases": [
+    "generic_sensor",
+    "module"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

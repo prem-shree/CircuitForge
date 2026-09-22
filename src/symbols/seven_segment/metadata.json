@@ -1,0 +1,92 @@
+{
+  "type": "seven_segment",
+  "name": "Seven-segment display",
+  "category": "display",
+  "width": 100,
+  "height": 100,
+  "pins": {
+    "a": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "in"
+    },
+    "b": {
+      "x": 0,
+      "y": 40,
+      "dir": "left",
+      "io": "in"
+    },
+    "c": {
+      "x": 0,
+      "y": 60,
+      "dir": "left",
+      "io": "in"
+    },
+    "d": {
+      "x": 0,
+      "y": 80,
+      "dir": "left",
+      "io": "in"
+    },
+    "e": {
+      "x": 100,
+      "y": 20,
+      "dir": "right",
+      "io": "in"
+    },
+    "f": {
+      "x": 100,
+      "y": 40,
+      "dir": "right",
+      "io": "in"
+    },
+    "g": {
+      "x": 100,
+      "y": 60,
+      "dir": "right",
+      "io": "in"
+    },
+    "dp": {
+      "x": 100,
+      "y": 80,
+      "dir": "right",
+      "io": "in"
+    },
+    "COM": {
+      "x": 50,
+      "y": 100,
+      "dir": "down",
+      "io": "passive"
+    }
+  },
+  "aliases": {
+    "common": "COM",
+    "cc": "COM",
+    "ca": "COM",
+    "dot": "dp",
+    "point": "dp"
+  },
+  "body": {
+    "x": 14,
+    "y": 6,
+    "w": 72,
+    "h": 84
+  },
+  "prefix": "DS",
+  "labels": "top",
+  "required": [
+    "COM"
+  ],
+  "typeAliases": [
+    "7seg",
+    "seven_seg",
+    "digit"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

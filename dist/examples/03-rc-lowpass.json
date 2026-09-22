@@ -1,0 +1,59 @@
+{
+  "title": "RC Low-Pass Filter",
+  "education": {
+    "summary": "The capacitor shunts high frequencies to ground, so fast changes are attenuated and slow ones pass.",
+    "objectives": [
+      "Compute an RC cut-off frequency",
+      "Relate the time constant to the step response"
+    ],
+    "theory": "fc = 1 / (2πRC) and τ = RC: after one time constant the output has reached 63 % of a step.",
+    "questions": [
+      "What is the cut-off frequency here?",
+      "How long does the output take to reach 95 % of a step?"
+    ]
+  },
+  "components": [
+    {
+      "id": "V1",
+      "type": "ac_source",
+      "value": "1V 1kHz"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "value": "100nF"
+    },
+    {
+      "id": "VOUT",
+      "type": "output"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "V1.positive",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "C1.1",
+      "VOUT"
+    ],
+    [
+      "C1.2",
+      "GND"
+    ],
+    [
+      "V1.negative",
+      "GND"
+    ]
+  ]
+}

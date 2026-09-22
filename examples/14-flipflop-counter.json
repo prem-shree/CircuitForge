@@ -1,0 +1,79 @@
+{
+  "title": "2-Bit Ripple Counter (D Flip-Flops)",
+  "education": {
+    "summary": "Each flip-flop feeds its inverted output back to D, so it toggles on every clock edge and divides the frequency by two.",
+    "objectives": [
+      "Explain edge-triggered storage",
+      "Show how toggling divides a clock"
+    ],
+    "questions": [
+      "What is the frequency at Q1 relative to CLK?",
+      "Why is this called a ripple counter?"
+    ]
+  },
+  "components": [
+    {
+      "id": "CLK",
+      "type": "input"
+    },
+    {
+      "id": "U1",
+      "type": "d_flipflop"
+    },
+    {
+      "id": "U2",
+      "type": "d_flipflop"
+    },
+    {
+      "id": "Q0",
+      "type": "output"
+    },
+    {
+      "id": "Q1",
+      "type": "output"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "CLK",
+      "U1.CLK"
+    ],
+    [
+      "U1.QN",
+      "U1.D",
+      "U2.CLK"
+    ],
+    [
+      "U2.QN",
+      "U2.D"
+    ],
+    [
+      "U1.Q",
+      "Q0"
+    ],
+    [
+      "U2.Q",
+      "Q1"
+    ],
+    [
+      "U1.S",
+      "GND"
+    ],
+    [
+      "U1.R",
+      "GND"
+    ],
+    [
+      "U2.S",
+      "GND"
+    ],
+    [
+      "U2.R",
+      "GND"
+    ]
+  ]
+}

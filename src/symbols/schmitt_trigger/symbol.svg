@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60" width="60" height="60">
+<g transform="scale(0.4) translate(0 0)">
+<g fill="none" stroke="currentColor" stroke-miterlimit="10" stroke-width="4">
+        <path d="M25 25v100l100-50L25 25zm0 50H0m125 0h25"/>
+        <path d="M37.5 84.5h31.25V65.75"/>
+        <path d="M84.5 65.75H53V84.5"/>
+    </g>
+</g>
+</svg>

@@ -1,0 +1,70 @@
+{
+  "type": "optocoupler",
+  "name": "Optocoupler",
+  "category": "semiconductor",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "anode": {
+      "x": 0,
+      "y": 10,
+      "dir": "left",
+      "io": "in"
+    },
+    "cathode": {
+      "x": 0,
+      "y": 50,
+      "dir": "left",
+      "io": "in"
+    },
+    "C": {
+      "x": 60,
+      "y": 10,
+      "dir": "right",
+      "io": "out"
+    },
+    "E": {
+      "x": 60,
+      "y": 50,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "1": "anode",
+    "2": "cathode",
+    "3": "E",
+    "4": "C",
+    "a": "anode",
+    "k": "cathode",
+    "collector": "C",
+    "emitter": "E"
+  },
+  "body": {
+    "x": 4.8,
+    "y": 2.4,
+    "w": 50.4,
+    "h": 55.2
+  },
+  "prefix": "U",
+  "labels": "right",
+  "required": [
+    "anode",
+    "cathode",
+    "C",
+    "E"
+  ],
+  "typeAliases": [
+    "optoisolator",
+    "opto"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Miscellaneous-COM-Optocoupler.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

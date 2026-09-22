@@ -20,6 +20,14 @@ export function sceneBounds(scene) {
   }
   for (const net of scene.routing.nets.values())
     for (const s of net.segments) b = unionRect(b, boundsOf([{ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 }]));
+  // annotations and measurement markers sit outside the wiring
+  const c = scene.circuit || {};
+  for (const m of [...(Array.isArray(c.measurements) ? c.measurements : []), ...(Array.isArray(c.annotations) ? c.annotations : [])]) {
+    const at = anchorOf(scene, m.at ?? m.position ?? m);
+    if (!at) continue;
+    const dx = Number.isFinite(m.dx) ? m.dx : 0, dy = Number.isFinite(m.dy) ? m.dy : -22;
+    b = unionRect(b, { x: at.x - 60, y: Math.min(at.y - 12, at.y + dy - 12), w: 120 + Math.abs(dx), h: Math.abs(dy) + 30 });
+  }
   return b || { x: 0, y: 0, w: 200, h: 100 };
 }
 
@@ -96,8 +104,70 @@ export function renderSVG(scene, opts = {}) {
   out.push(`<g id="junctions" fill="${th.junction}" stroke="none">`);
   for (const j of scene.routing.junctions) out.push(`<circle cx="${n(j.x)}" cy="${n(j.y)}" r="3.2"/>`);
   out.push('</g>');
+
+  // measurements and annotations declared in the JSON
+  const extras = renderExtras(scene, th);
+  if (extras) out.push(extras);
   out.push('</svg>');
   return { svg: out.join('\n'), width: vw, height: vh, viewBox: { x: vx, y: vy, w: vw, h: vh } };
+}
+
+// Resolve where a measurement/annotation points: explicit point, a component,
+// a component pin, or anywhere on a net's wiring.
+function anchorOf(scene, spec) {
+  if (!spec) return null;
+  if (Number.isFinite(spec.x) && Number.isFinite(spec.y)) return { x: spec.x, y: spec.y };
+  const ref = typeof spec === 'string' ? spec : (spec.at ?? spec.component ?? spec.pin ?? spec.net ?? spec.target);
+  if (Number.isFinite(ref?.x) && Number.isFinite(ref?.y)) return { x: ref.x, y: ref.y };
+  if (typeof ref === 'string') {
+    const [id, pin] = ref.split('.');
+    const I = scene.instances.get(id);
+    if (I) {
+      if (pin && I.pins[pin]) return { ...I.pins[pin] };
+      return { x: I.body.x + I.body.w / 2, y: I.body.y - 10 };
+    }
+    // net by id or name
+    for (const [nid, net] of scene.netlist.nets) {
+      if (nid !== ref && net.name !== ref) continue;
+      const wires = scene.routing.nets.get(nid);
+      const seg = wires?.segments?.[Math.floor((wires.segments.length - 1) / 2)];
+      if (seg) return { x: (seg.x1 + seg.x2) / 2, y: (seg.y1 + seg.y2) / 2 };
+      const e = net.pins[0];
+      const I2 = e && scene.instances.get(e.comp);
+      if (I2) return { ...I2.pins[e.pin] };
+    }
+  }
+  return null;
+}
+
+function renderExtras(scene, th) {
+  const c = scene.circuit || {};
+  const items = [];
+  for (const m of Array.isArray(c.measurements) ? c.measurements : []) {
+    const at = anchorOf(scene, m);
+    if (!at) continue;
+    const kind = String(m.type || m.quantity || 'voltage').toLowerCase();
+    const letter = kind.startsWith('c') ? 'A' : kind.startsWith('r') ? 'Ω' : 'V';
+    const label = [m.label ?? m.name ?? '', m.expected != null ? `${m.expected}` : ''].filter(Boolean).join(' = ');
+    items.push(`<g class="cf-measurement" data-kind="${esc(kind)}">`
+      + `<circle cx="${n(at.x)}" cy="${n(at.y)}" r="6.5" fill="none" stroke="${th.ink}" stroke-width="1.2" stroke-dasharray="3 2"/>`
+      + `<text x="${n(at.x)}" y="${n(at.y) + 3}" font-size="7.5" text-anchor="middle" fill="${th.ink}" stroke="none">${letter}</text>`
+      + (label ? `<text x="${n(at.x + 10)}" y="${n(at.y - 8)}" font-size="10" fill="${th.muted}" stroke="none">${esc(label)}</text>` : '')
+      + '</g>');
+  }
+  for (const a of Array.isArray(c.annotations) ? c.annotations : []) {
+    const at = anchorOf(scene, a.at ?? a.position ?? a);
+    const text = a.text ?? a.note ?? a.label;
+    if (!at || !text) continue;
+    const dx = Number.isFinite(a.dx) ? a.dx : 0, dy = Number.isFinite(a.dy) ? a.dy : -22;
+    const tx = at.x + dx, ty = at.y + dy;
+    const lines = String(text).split('\n');
+    items.push(`<g class="cf-annotation">`
+      + (a.leader === false ? '' : `<path d="M${n(tx)} ${n(ty + 4)}L${n(at.x)} ${n(at.y)}" fill="none" stroke="${th.muted}" stroke-width="1" stroke-dasharray="3 2"/>`)
+      + lines.map((ln, i) => `<text x="${n(tx)}" y="${n(ty + i * 12)}" font-size="10.5" text-anchor="${a.anchor || 'middle'}" fill="${th.muted}" stroke="none">${esc(ln)}</text>`).join('')
+      + '</g>');
+  }
+  return items.length ? `<g id="notes">${items.join('')}</g>` : '';
 }
 
 function textEl(l, fill, weight) {

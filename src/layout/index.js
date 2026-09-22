@@ -12,11 +12,13 @@
 //    sliding away from the net's source (analog) or down (digital/terminals).
 import { makeInstance } from './instance.js';
 import { DIRS, OPPOSITE, GRID, snap, xformDir, overlaps, inflate } from '../utils/geometry.js';
+import { normalizeLayout } from './config.js';
 
-const COL_GAP = 40;
-const CLEAR = 16;
-
-export function layoutCircuit(nl) {
+export function layoutCircuit(nl, circuit = {}) {
+  const cfg = normalizeLayout(circuit);
+  const COL_GAP = cfg.componentGap;
+  const CLEAR = cfg.wireGap;
+  const STEP = cfg.grid;
   const { parts, nets } = nl;
   const byId = new Map(parts.map((p) => [p.id, p]));
   const railKind = (n) => (n ? nets.get(n)?.rail?.kind : undefined);
@@ -27,7 +29,11 @@ export function layoutCircuit(nl) {
     if (k === 'power') return 'up';
     return null;
   };
-  const signal = (n) => n && !railKind(n) && n !== nl.returnNet;
+  // Power and ground rails are drawn as markers and never constrain placement.
+  // A named net label is a normal net that happens to be drawn as a flag, so it
+  // still pulls its parts together and keeps the sheet in one piece.
+  const isRailNet = (n) => ['power', 'ground', 'negative'].includes(railKind(n));
+  const signal = (n) => n && !isRailNet(n) && n !== nl.returnNet;
 
   // ---- 1. orientation
   const orient = new Map();
@@ -114,13 +120,21 @@ export function layoutCircuit(nl) {
     for (const p of parts) if (!p.sym.terminal) layer.set(p.id, layer.get(p.id) + 1);
     for (const p of parts) if (p.sym.terminal === 'output') layer.set(p.id, lastL + 1);
   }
+  // Explicit "section": inputs left, outputs right, processing in between.
+  if (parts.some((p) => p.comp.section)) {
+    const maxL = Math.max(...parts.map((p) => layer.get(p.id)));
+    for (const p of parts) {
+      if (p.comp.section === 'input') layer.set(p.id, 0);
+      else if (p.comp.section === 'output') layer.set(p.id, maxL + 1);
+    }
+  }
 
   // ---- 3. placement
   const placed = [];
   const inst = new Map();
   const lines = new Map(); // net -> { y, src:{x,y,dir}, order }
   let lineOrder = 0;
-  const trial = (p, rot, mirror) => makeInstance(p, 0, 0, rot, mirror, nets);
+  const trial = (p, rot, mirror) => makeInstance(p, 0, 0, rot, mirror, nets, cfg);
   const coreLeft = (T) => Math.min(T.body.x, ...Object.values(T.pins).map((q) => q.x));
 
   const nLayers = Math.max(0, ...layer.values()) + 1;
@@ -129,13 +143,30 @@ export function layoutCircuit(nl) {
     const o = orient.get(p.id);
     colW[layer.get(p.id)] = Math.max(colW[layer.get(p.id)], trial(p, o.rot, o.mirror).extent.w);
   }
+  // Wider gap where many nets have to cross between two columns, so the router
+  // has a track per net instead of squeezing them into one corridor.
+  const crossings = new Array(nLayers).fill(0);
+  for (const [nid, net] of nets) {
+    if (!signal(nid)) continue;
+    const ls = net.pins.map((e) => layer.get(e.comp)).filter((x) => x !== undefined);
+    if (ls.length < 2) continue;
+    for (let b = Math.min(...ls) + 1; b <= Math.max(...ls); b++) crossings[b]++;
+  }
+  const gapAt = (b) => Math.min(COL_GAP * 4, COL_GAP + Math.max(0, (crossings[b] || 0) - 2) * 20);
   const colX = [0];
-  for (let i = 1; i < nLayers; i++) colX[i] = colX[i - 1] + colW[i - 1] + COL_GAP;
+  for (let i = 1; i < nLayers; i++) colX[i] = colX[i - 1] + colW[i - 1] + gapAt(i);
   const cursor = new Array(nLayers).fill(0);
   // Columns start after everything already placed in earlier columns (parts may have slid).
   const colRight = new Array(nLayers).fill(-Infinity);
-  const colStart = (L) => Math.max(colX[L], ...colRight.slice(0, L).map((r) => r + COL_GAP));
+  const colStart = (L) => Math.max(colX[L], ...colRight.slice(0, L).map((r) => r + gapAt(L)));
 
+  // Unconnected sub-circuits are stacked with sectionGap between them.
+  const islandBottom = new Map();
+  const islandTop = (isl) => {
+    let top = 0;
+    for (const [k, b] of islandBottom) if (k < isl) top = Math.max(top, b + cfg.sectionGap);
+    return top;
+  };
   const isFree = (I, ignore) => {
     const e = inflate(I.extent, CLEAR / 2);
     return placed.every((o) => o === ignore || !overlaps(e, inflate(o.extent, CLEAR / 2)));
@@ -146,13 +177,13 @@ export function layoutCircuit(nl) {
     const L = layer.get(I.id);
     colRight[L] = Math.max(colRight[L], I.extent.x + I.extent.w);
     for (const [pin, net] of Object.entries(I.part.pinNets)) {
-      if (railKind(net) || lines.has(net)) continue;
+      if (isRailNet(net) || lines.has(net)) continue;
       const pp = I.pins[pin];
       const d = DIRS[pp.dir];
       lines.set(net, { y: pp.y + (d.y ? d.y * 20 : 0), src: pp, order: lineOrder++ });
     }
   };
-  const at = (p, originX, originY, rot, mirror) => makeInstance(p, snap(originX), snap(originY), rot, mirror, nets);
+  const at = (p, originX, originY, rot, mirror) => makeInstance(p, snap(originX, STEP), snap(originY, STEP), rot, mirror, nets, cfg);
 
   // Parts with explicit positions are placed first and act as anchors.
   for (const p of parts) {
@@ -222,7 +253,8 @@ export function layoutCircuit(nl) {
       if (src.dir === 'left') ox = Math.min(ox, src.x - 20 - ap.x);
       cands.push([ox, ty - ap.y]);
     } else {
-      cands.push([colStart(L) - coreLeft(T), cursor[L] - T.extent.y]);
+      const base = Math.max(cursor[L], islandTop(islandOf.get(p.id)));
+      cands.push([colStart(L) - coreLeft(T), base - T.extent.y]);
     }
 
     let chosen = null;
@@ -250,10 +282,60 @@ export function layoutCircuit(nl) {
     }
     if (!anchor) cursor[L] = chosen.extent.y + chosen.extent.h + CLEAR + 20;
     commit(chosen);
+    const isl = islandOf.get(p.id);
+    islandBottom.set(isl, Math.max(islandBottom.get(isl) ?? -Infinity, chosen.extent.y + chosen.extent.h));
   }
 
   alignTerminals(parts, nets, inst, isFree, at, orient);
-  return { instances: inst, orient, layers: layer };
+  packIslands(inst, islandOf, at, cfg);
+  return { instances: inst, orient, layers: layer, islands: islandOf, config: cfg };
+}
+
+// Sub-circuits connected only through rails (a decoupling cap, a divider on the
+// supply) are laid out on their own. Flow them into rows so the sheet stays
+// compact instead of growing into one tall column. Parts the JSON positions
+// explicitly are never moved, and their sections act as fixed blocks.
+function packIslands(inst, islandOf, at, cfg) {
+  const groups = new Map();
+  for (const I of inst.values()) {
+    const k = islandOf.get(I.id) ?? 0;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(I);
+  }
+  if (groups.size < 2) return;
+  const bbox = (list) => list.reduce((b, I) => ({
+    x: Math.min(b.x, I.extent.x), y: Math.min(b.y, I.extent.y),
+    x2: Math.max(b.x2, I.extent.x + I.extent.w), y2: Math.max(b.y2, I.extent.y + I.extent.h),
+  }), { x: Infinity, y: Infinity, x2: -Infinity, y2: -Infinity });
+
+  const islands = [...groups.entries()].sort((a, b) => a[0] - b[0]).map(([key, list]) => ({
+    key, list, box: bbox(list), pinned: list.some((I) => I.part.comp.position),
+  }));
+  const gap = cfg.sectionGap;
+  const widest = Math.max(...islands.map((i) => i.box.x2 - i.box.x));
+  const maxRow = Math.max(widest, 800);
+
+  // start the flow below anything the user pinned
+  let rowTop = Math.max(0, ...islands.filter((i) => i.pinned).map((i) => i.box.y2 + gap));
+  let rowLeft = Math.min(0, ...islands.map((i) => i.box.x));
+  let cursorX = rowLeft, rowHeight = 0;
+  for (const isl of islands) {
+    if (isl.pinned) continue;
+    const w = isl.box.x2 - isl.box.x, h = isl.box.y2 - isl.box.y;
+    if (cursorX > rowLeft && cursorX + w > rowLeft + maxRow) {
+      rowTop += rowHeight + gap;
+      cursorX = rowLeft;
+      rowHeight = 0;
+    }
+    const dx = Math.round((cursorX - isl.box.x) / cfg.grid) * cfg.grid;
+    const dy = Math.round((rowTop - isl.box.y) / cfg.grid) * cfg.grid;
+    if (dx || dy) {
+      // keep the orientation the placement actually chose (flex parts may have flipped)
+      for (const I of isl.list) Object.assign(I, at(I.part, I.x + dx, I.y + dy, I.rot, I.mirror));
+    }
+    cursorX += w + gap;
+    rowHeight = Math.max(rowHeight, h);
+  }
 }
 
 // Longest-path layering along digital out -> in edges (back edges ignored).
@@ -302,8 +384,7 @@ function alignTerminals(parts, nets, inst, isFree, at, orient) {
     targets.sort((a, b) => Math.abs(a.y - my.y) - Math.abs(b.y - my.y));
     const dy = targets[0].y - my.y;
     if (!dy) continue;
-    const o = orient.get(p.id);
-    const J = at(p, I.x, I.y + dy, o.rot, o.mirror);
+    const J = at(p, I.x, I.y + dy, I.rot, I.mirror);
     if (isFree(J, I)) Object.assign(I, J);
   }
 }

@@ -1,0 +1,49 @@
+{
+  "type": "schmitt_trigger",
+  "name": "Schmitt trigger",
+  "category": "digital",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "A": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "Y": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    }
+  },
+  "aliases": {
+    "1": "A",
+    "2": "Y",
+    "in": "A",
+    "out": "Y",
+    "input": "A",
+    "output": "Y"
+  },
+  "body": {
+    "x": 10,
+    "y": 10,
+    "w": 40,
+    "h": 40
+  },
+  "prefix": "U",
+  "labels": "top",
+  "typeAliases": [
+    "schmitt"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/IC-COM-Schmitt.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

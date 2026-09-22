@@ -1,0 +1,135 @@
+{
+  "title": "74HC595 Shift Register Driving LEDs",
+  "education": {
+    "summary": "Three control lines drive eight outputs: data is clocked in serially, then latched to the outputs.",
+    "objectives": [
+      "Explain serial-to-parallel conversion",
+      "Identify shift clock versus latch clock"
+    ],
+    "questions": [
+      "How many clock pulses are needed to fill the register?",
+      "Why is the latch separate from the shift clock?"
+    ]
+  },
+  "components": [
+    {
+      "id": "U1",
+      "type": "generic_ic",
+      "label": "74HC595",
+      "pins": {
+        "left": [
+          "SER",
+          "SRCLK",
+          "RCLK",
+          "~SRCLR",
+          "~OE"
+        ],
+        "right": [
+          "QA",
+          "QB",
+          "QC",
+          "QD"
+        ],
+        "top": [
+          "VCC"
+        ],
+        "bottom": [
+          "GND"
+        ]
+      }
+    },
+    {
+      "id": "DATA",
+      "type": "input"
+    },
+    {
+      "id": "SCK",
+      "type": "input"
+    },
+    {
+      "id": "LATCH",
+      "type": "input"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "330Ω"
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "330Ω"
+    },
+    {
+      "id": "D1",
+      "type": "led"
+    },
+    {
+      "id": "D2",
+      "type": "led"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+5V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "DATA",
+      "U1.SER"
+    ],
+    [
+      "SCK",
+      "U1.SRCLK"
+    ],
+    [
+      "LATCH",
+      "U1.RCLK"
+    ],
+    [
+      "U1.SRCLR",
+      "VCC"
+    ],
+    [
+      "U1.OE",
+      "GND"
+    ],
+    [
+      "U1.VCC",
+      "VCC"
+    ],
+    [
+      "U1.GND",
+      "GND"
+    ],
+    [
+      "U1.QA",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "D1.anode"
+    ],
+    [
+      "D1.cathode",
+      "GND"
+    ],
+    [
+      "U1.QB",
+      "R2.1"
+    ],
+    [
+      "R2.2",
+      "D2.anode"
+    ],
+    [
+      "D2.cathode",
+      "GND"
+    ]
+  ]
+}

@@ -1,0 +1,80 @@
+{
+  "title": "Microcontroller LED and Button",
+  "description": "The classic first project: a button input and an LED output on a development board.",
+  "education": {
+    "summary": "The board supplies power; the MCU pin sources current for the LED through a resistor, and reads the button against a pull-up.",
+    "objectives": [
+      "Connect an LED to a GPIO pin safely",
+      "Read a button",
+      "Respect the pin current limit"
+    ],
+    "troubleshooting": [
+      "LED always on: check the pin is an output and the resistor value",
+      "Button reads randomly: the pull-up is missing"
+    ]
+  },
+  "components": [
+    {
+      "id": "U1",
+      "type": "arduino_uno",
+      "value": "Uno-style"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "330Ω"
+    },
+    {
+      "id": "D1",
+      "type": "led",
+      "value": "Red"
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "10kΩ"
+    },
+    {
+      "id": "SW1",
+      "type": "push_button"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "U1.D13",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "D1.anode"
+    ],
+    [
+      "D1.cathode",
+      "GND"
+    ],
+    [
+      "U1.5V",
+      "R2.1"
+    ],
+    {
+      "pins": [
+        "R2.2",
+        "SW1.1",
+        "U1.D2"
+      ],
+      "net": "BTN"
+    },
+    [
+      "SW1.2",
+      "GND"
+    ],
+    [
+      "U1.GND",
+      "GND"
+    ]
+  ]
+}

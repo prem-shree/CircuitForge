@@ -1,0 +1,85 @@
+{
+  "type": "arduino_uno",
+  "name": "Arduino-style board",
+  "category": "board",
+  "kind": "box",
+  "label": "ARDUINO",
+  "pins": {
+    "left": [
+      "RESET",
+      "A0",
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "VIN"
+    ],
+    "right": [
+      "D2",
+      "D3",
+      "D4",
+      "D5",
+      "D6",
+      "D9",
+      "D10",
+      "D11",
+      "D12",
+      "D13"
+    ],
+    "top": [
+      "5V",
+      "3V3"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "sda": "A4",
+    "scl": "A5",
+    "mosi": "D11",
+    "miso": "D12",
+    "sck": "D13",
+    "led_builtin": "D13",
+    "vcc": "5V"
+  },
+  "pinIO": {
+    "D2": "bidirectional",
+    "D3": "bidirectional",
+    "D4": "bidirectional",
+    "D5": "bidirectional",
+    "D6": "bidirectional",
+    "D9": "bidirectional",
+    "D10": "bidirectional",
+    "D11": "bidirectional",
+    "D12": "bidirectional",
+    "D13": "bidirectional",
+    "A0": "bidirectional",
+    "A1": "bidirectional",
+    "A2": "bidirectional",
+    "A3": "bidirectional",
+    "A4": "bidirectional",
+    "A5": "bidirectional",
+    "5V": "power_out",
+    "3V3": "power_out",
+    "VIN": "power_in",
+    "GND": "power_in",
+    "RESET": "in"
+  },
+  "required": [
+    "GND"
+  ],
+  "typeAliases": [
+    "arduino",
+    "arduino_nano",
+    "arduino_board",
+    "uno"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

@@ -26,6 +26,11 @@
     "output": "OUT",
     "adj": "GND"
   },
+  "pinIO": {
+    "IN": "power_in",
+    "OUT": "power_out",
+    "GND": "power_in"
+  },
   "required": [
     "IN",
     "OUT",
@@ -33,7 +38,6 @@
   ],
   "typeAliases": [
     "regulator",
-    "ldo",
     "7805",
     "lm7805"
   ],

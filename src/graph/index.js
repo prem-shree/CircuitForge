@@ -53,10 +53,12 @@ export function buildNetlist(validation) {
   let n = 0;
   for (const keys of groups.values()) {
     const pins = [];
+    const rails = [];
     let rail = null, name = null;
     for (const k of keys) {
       if (k.startsWith('rail:')) {
         const r = railOf.get(k);
+        rails.push(r);
         if (!rail || RAIL_PRIORITY[r.kind] > RAIL_PRIORITY[rail.kind]) rail = r;
       } else if (k.startsWith('named:')) name = name || k.slice(6);
       else {
@@ -68,7 +70,7 @@ export function buildNetlist(validation) {
     if (!pins.length) continue;
     const id = `N${++n}`;
     if (rail) rail = { ...rail, sym: resolveSymbol({ type: rail.type }) };
-    nets.set(id, { id, name: rail ? rail.name : name, pins, rail });
+    nets.set(id, { id, name: rail ? rail.name : name, pins, rail, rails });
     for (const k of keys) keyToNet.set(k, id);
   }
   for (const p of parts) {
@@ -76,6 +78,21 @@ export function buildNetlist(validation) {
       const net = keyToNet.get(`${p.id}.${pin}`);
       if (net) p.pinNets[pin] = net;
     }
+  }
+
+  // Per-connection wire hints (waypoints / manual routes) and net classes.
+  const hints = [];
+  for (const c of connections) {
+    const net = keyToNet.get(`${c.ends[0].comp}.${c.ends[0].pin}`);
+    if (!net) continue;
+    if (c.class && nets.has(net)) nets.get(net).class = nets.get(net).class || c.class;
+    if (c.waypoints || c.route) {
+      hints.push({ net, ends: c.ends.filter((e) => partIds.has(e.comp)), waypoints: c.waypoints, route: c.route, locked: c.locked, path: c.path });
+    }
+  }
+  for (const [, net] of nets) {
+    if (net.class) continue;
+    net.class = net.rail ? (net.rail.kind === 'ground' || net.rail.kind === 'negative' ? 'ground' : net.rail.kind === 'power' ? 'power' : 'signal') : 'signal';
   }
 
   // Without an explicit ground, the first source's negative net acts as the
@@ -86,5 +103,5 @@ export function buildNetlist(validation) {
     const src = parts.find((p) => p.sym.source && p.pinNets.negative && !nets.get(p.pinNets.negative).rail);
     if (src) returnNet = src.pinNets.negative;
   }
-  return { parts, nets, returnNet };
+  return { parts, nets, returnNet, hints, connections };
 }

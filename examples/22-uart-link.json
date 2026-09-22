@@ -1,0 +1,140 @@
+{
+  "title": "UART Link Between Boards",
+  "description": "Two microcontrollers exchange data over TX/RX with a common ground.",
+  "education": {
+    "summary": "UART is asynchronous: both sides agree on a baud rate instead of sharing a clock. TX of one board goes to RX of the other, and the grounds must be joined.",
+    "objectives": [
+      "Wire TX/RX correctly",
+      "Explain why a common ground is required",
+      "Know what baud rate means"
+    ],
+    "questions": [
+      "What happens if you connect TX to TX?"
+    ]
+  },
+  "components": [
+    {
+      "id": "U1",
+      "type": "microcontroller",
+      "value": "MCU A",
+      "pins": {
+        "left": [
+          "RST"
+        ],
+        "right": [
+          "TX",
+          "RX"
+        ],
+        "top": [
+          "VCC"
+        ],
+        "bottom": [
+          "GND"
+        ]
+      },
+      "pinTypes": {
+        "TX": "out",
+        "RX": "in"
+      }
+    },
+    {
+      "id": "U2",
+      "type": "microcontroller",
+      "value": "MCU B",
+      "pins": {
+        "left": [
+          "RX",
+          "TX"
+        ],
+        "right": [
+          "LED"
+        ],
+        "top": [
+          "VCC"
+        ],
+        "bottom": [
+          "GND"
+        ]
+      },
+      "pinTypes": {
+        "TX": "out",
+        "RX": "in"
+      }
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "330Ω"
+    },
+    {
+      "id": "D1",
+      "type": "led"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+3V3"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    {
+      "pins": [
+        "U1.TX",
+        "U2.RX"
+      ],
+      "net": "TXD",
+      "class": "signal"
+    },
+    {
+      "pins": [
+        "U2.TX",
+        "U1.RX"
+      ],
+      "net": "RXD",
+      "class": "signal"
+    },
+    [
+      "U1.VCC",
+      "VCC"
+    ],
+    [
+      "U2.VCC",
+      "VCC"
+    ],
+    [
+      "U1.GND",
+      "GND"
+    ],
+    [
+      "U2.GND",
+      "GND"
+    ],
+    [
+      "U1.RST",
+      "VCC"
+    ],
+    [
+      "U2.LED",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "D1.anode"
+    ],
+    [
+      "D1.cathode",
+      "GND"
+    ]
+  ],
+  "annotations": [
+    {
+      "text": "TX → RX, crossed",
+      "at": "TXD",
+      "dy": -28
+    }
+  ]
+}

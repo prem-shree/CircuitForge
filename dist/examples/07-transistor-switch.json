@@ -1,0 +1,89 @@
+{
+  "title": "NPN Transistor Switch",
+  "description": "A microcontroller pin switches a lamp through an NPN transistor and a base resistor.",
+  "education": {
+    "summary": "A logic pin can only supply a few milliamps. A transistor lets that small base current switch a much larger load current.",
+    "objectives": [
+      "Size a base resistor",
+      "Explain saturation",
+      "Know why the load sits in the collector leg"
+    ],
+    "questions": [
+      "With β = 100 and Ic = 100 mA, what base current saturates the transistor?",
+      "Why is the flyback diode needed for an inductive load?"
+    ]
+  },
+  "components": [
+    {
+      "id": "CTRL",
+      "type": "input",
+      "label": "GPIO",
+      "section": "input"
+    },
+    {
+      "id": "RB",
+      "type": "resistor",
+      "value": "1kΩ",
+      "params": {
+        "tolerance": "5%",
+        "rating": {
+          "power": "0.25W"
+        }
+      }
+    },
+    {
+      "id": "Q1",
+      "type": "npn",
+      "value": "2N2222",
+      "params": {
+        "rating": {
+          "current": "600mA"
+        }
+      }
+    },
+    {
+      "id": "LMP1",
+      "type": "lamp",
+      "value": "12V 100mA"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+12V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "CTRL",
+      "RB.1"
+    ],
+    [
+      "RB.2",
+      "Q1.B"
+    ],
+    [
+      "Q1.C",
+      "LMP1.2"
+    ],
+    [
+      "LMP1.1",
+      "VCC"
+    ],
+    [
+      "Q1.E",
+      "GND"
+    ]
+  ],
+  "measurements": [
+    {
+      "type": "voltage",
+      "at": "Q1.C",
+      "label": "Vce(sat)",
+      "expected": "≈0.2 V when on"
+    }
+  ]
+}

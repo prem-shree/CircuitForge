@@ -21,11 +21,14 @@ export function placeLabels(instances, routing) {
     return s;
   };
   for (const I of insts) {
-    I.labelsFinal = I.labels;
-    if (I.labelAlt?.length) {
-      const a = score(I, I.labels), b = score(I, I.labelAlt);
-      if (b < a) I.labelsFinal = I.labelAlt;
-    }
-    for (const l of I.labelsFinal) taken.push(l.box);
+    const candidates = I.labelSets?.length ? I.labelSets : [I.labels];
+    let best = candidates[0], bestScore = Infinity;
+    candidates.forEach((set, i) => {
+      // prefer the conventional position: later candidates pay a small penalty
+      const s = score(I, set) + i * 0.5;
+      if (s < bestScore) { bestScore = s; best = set; }
+    });
+    I.labelsFinal = best;
+    for (const l of best) taken.push(l.box);
   }
 }

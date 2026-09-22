@@ -13,7 +13,8 @@ for (const [type, def] of Object.entries(LIB)) {
 }
 
 // Board-level parts we deliberately do not support yet (architecture allows them later).
-export const UNSUPPORTED_TYPES = ['arduino', 'arduino_uno', 'arduino_nano', 'arduino_mega', 'esp32', 'esp8266', 'nodemcu', 'raspberry_pi', 'rpi', 'raspberry_pi_pico', 'rpi_pico'];
+// Parts with no schematic symbol yet: whole boards/assemblies rather than components.
+export const UNSUPPORTED_TYPES = ['raspberry_pi', 'rpi', 'raspberry_pi_4', 'raspberry_pi_5', 'jetson_nano', 'breadboard', 'perfboard', 'pcb'];
 
 export function canonicalType(type) {
   if (type == null) return null;
@@ -36,7 +37,7 @@ export function resolveSymbol(component) {
   const def = LIB[type];
   if (!def) return null;
   if (def.kind === 'box') {
-    const key = type + '|' + JSON.stringify(component.pins ?? null) + '|' + (component.label ?? '') + '|' + (component.value ?? '');
+    const key = [type, JSON.stringify(component.pins ?? null), JSON.stringify(component.pinTypes ?? null), component.label ?? '', component.value ?? ''].join('|');
     if (!cache.has(key)) cache.set(key, buildBox(def, component));
     return cache.get(key);
   }
@@ -92,6 +93,8 @@ function boxSpec(def, component) {
 
 function buildBox(def, component) {
   const spec = boxSpec(def, component);
+  // Per-component electrical pin types, e.g. "pinTypes": { "D7": "bidirectional" }.
+  if (component.pinTypes) def = { ...def, pinIO: { ...def.pinIO, ...component.pinTypes } };
   const L = spec.left || [], R = spec.right || [], T = spec.top || [], B = spec.bottom || [];
   const FS = 9;
   const tw = (s) => textWidth(s.replace(/^~/, ''), FS);
@@ -115,19 +118,22 @@ function buildBox(def, component) {
     const shown = over ? name.slice(1) : name;
     text.push(`<text x="${x}" y="${y}" font-size="${FS}" text-anchor="${anchor}"${over ? ' text-decoration="overline"' : ''}>${esc(shown)}</text>`);
   };
-  const io = (side) => def.io || (side === 'left' ? 'in' : side === 'right' ? 'out' : 'power');
+  // Electrical pin type: explicit override, then supply-pin names, then the side.
+  const POWER_PIN = /^(vcc|vdd|vss|vee|gnd|agnd|dgnd|vin|vbus|vsys|v\+|v-|\d+v\d?|\d+v\d?v?)$/i;
+  const io = (name, side) => def.pinIO?.[name] || def.io
+    || (POWER_PIN.test(name.replace(/^~/, '')) ? 'power_in' : side === 'left' ? 'in' : side === 'right' ? 'out' : 'power_in');
   const isClock = (n) => /^~?(clk|cp|clock)$/i.test(n);
   const lines = [];
   L.forEach((n, i) => {
     const y = firstY + i * 20;
-    pins[n] = { x: 0, y, dir: 'left', io: io('left') };
+    pins[n] = { x: 0, y, dir: 'left', io: io(n, 'left') };
     lines.push(`M0 ${y}H20`);
     if (isClock(n)) { lines.push(`M20 ${y - 5}L27 ${y}L20 ${y + 5}`); label(30, y + 3, n, 'start'); }
     else label(24, y + 3, n, 'start');
   });
   R.forEach((n, i) => {
     const y = firstY + i * 20;
-    pins[n] = { x: W + 40, y, dir: 'right', io: io('right') };
+    pins[n] = { x: W + 40, y, dir: 'right', io: io(n, 'right') };
     lines.push(`M${W + 20} ${y}H${W + 40}`);
     label(W + 16, y + 3, n, 'end');
   });
@@ -135,7 +141,7 @@ function buildBox(def, component) {
     const x0 = 20 + snap((W - (list.length - 1) * 20) / 2);
     list.forEach((n, i) => {
       const x = x0 + i * 20;
-      pins[n] = { x, y, dir, io: io(dir === 'up' ? 'top' : 'bottom') };
+      pins[n] = { x, y, dir, io: io(n, dir === 'up' ? 'top' : 'bottom') };
       lines.push(dir === 'up' ? `M${x} 0V${top}` : `M${x} ${bottom}V${bottom + 20}`);
       label(x, ty, n, 'middle');
     });

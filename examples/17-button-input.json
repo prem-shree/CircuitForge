@@ -1,0 +1,98 @@
+{
+  "title": "Debounced Button Input",
+  "description": "Pull-up resistor, push button and an RC filter feeding a Schmitt-trigger input.",
+  "education": {
+    "summary": "An open button leaves an input floating. The pull-up defines the idle level; the RC and Schmitt trigger remove contact bounce.",
+    "objectives": [
+      "Explain pull-up resistors",
+      "Estimate an RC debounce time",
+      "Recognise contact bounce"
+    ],
+    "questions": [
+      "What is the RC time constant here, and is it long enough for a 5 ms bounce?"
+    ]
+  },
+  "components": [
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "10kΩ"
+    },
+    {
+      "id": "SW1",
+      "type": "push_button",
+      "value": "Tactile"
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "value": "100nF"
+    },
+    {
+      "id": "U1",
+      "type": "schmitt_trigger",
+      "value": "74HC14"
+    },
+    {
+      "id": "OUT",
+      "type": "output",
+      "label": "BTN"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+5V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "VCC",
+      "R1.1"
+    ],
+    {
+      "pins": [
+        "R1.2",
+        "SW1.1",
+        "R2.1"
+      ],
+      "net": "BTN_RAW"
+    },
+    [
+      "SW1.2",
+      "GND"
+    ],
+    {
+      "pins": [
+        "R2.2",
+        "C1.1",
+        "U1.A"
+      ],
+      "net": "BTN_FILT"
+    },
+    [
+      "C1.2",
+      "GND"
+    ],
+    [
+      "U1.Y",
+      "OUT"
+    ]
+  ],
+  "measurements": [
+    {
+      "type": "voltage",
+      "at": "BTN_RAW",
+      "label": "raw",
+      "expected": "5 V idle"
+    }
+  ]
+}

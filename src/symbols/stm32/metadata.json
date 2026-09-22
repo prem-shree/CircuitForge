@@ -1,0 +1,79 @@
+{
+  "type": "stm32",
+  "name": "STM32-style board",
+  "category": "board",
+  "kind": "box",
+  "label": "STM32",
+  "pins": {
+    "left": [
+      "NRST",
+      "PA0",
+      "PA1",
+      "PA2",
+      "PA3",
+      "PA4",
+      "PA5",
+      "PA6"
+    ],
+    "right": [
+      "PA7",
+      "PA8",
+      "PA9",
+      "PA10",
+      "PB0",
+      "PB1",
+      "PB6",
+      "PB7"
+    ],
+    "top": [
+      "3V3",
+      "5V"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "reset": "NRST",
+    "sda": "PB7",
+    "scl": "PB6",
+    "tx": "PA9",
+    "rx": "PA10",
+    "vcc": "3V3"
+  },
+  "pinIO": {
+    "PA0": "bidirectional",
+    "PA1": "bidirectional",
+    "PA2": "bidirectional",
+    "PA3": "bidirectional",
+    "PA4": "bidirectional",
+    "PA5": "bidirectional",
+    "PA6": "bidirectional",
+    "PA7": "bidirectional",
+    "PA8": "bidirectional",
+    "PA9": "bidirectional",
+    "PA10": "bidirectional",
+    "PB0": "bidirectional",
+    "PB1": "bidirectional",
+    "PB6": "bidirectional",
+    "PB7": "bidirectional",
+    "3V3": "power_out",
+    "5V": "power_in",
+    "GND": "power_in",
+    "NRST": "in"
+  },
+  "required": [
+    "GND"
+  ],
+  "typeAliases": [
+    "stm32_board",
+    "nucleo",
+    "blue_pill"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

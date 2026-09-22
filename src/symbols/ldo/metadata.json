@@ -1,0 +1,47 @@
+{
+  "type": "ldo",
+  "name": "LDO regulator",
+  "category": "analog",
+  "kind": "box",
+  "label": "LDO",
+  "pins": {
+    "left": [
+      "IN",
+      "EN"
+    ],
+    "right": [
+      "OUT"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "vin": "IN",
+    "vout": "OUT",
+    "enable": "EN",
+    "shdn": "EN"
+  },
+  "pinIO": {
+    "IN": "power_in",
+    "OUT": "power_out",
+    "GND": "power_in",
+    "EN": "in"
+  },
+  "required": [
+    "IN",
+    "OUT",
+    "GND"
+  ],
+  "typeAliases": [
+    "low_dropout",
+    "ams1117",
+    "lm1117"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

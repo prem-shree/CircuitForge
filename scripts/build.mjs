@@ -11,7 +11,7 @@ execFileSync(process.execPath, ['scripts/build-symbols.mjs'], { stdio: 'inherit'
 fs.rmSync('dist', { recursive: true, force: true });
 fs.mkdirSync('dist', { recursive: true });
 fs.cpSync('public', 'dist', { recursive: true });
-fs.cpSync('samples', 'dist/samples', { recursive: true });
+fs.cpSync('examples', 'dist/examples', { recursive: true });
 // Bundled third-party symbols (MIT) must ship with their notice.
 fs.copyFileSync('src/symbols/LICENSE-electronic-symbols.txt', 'dist/LICENSE-electronic-symbols.txt');
 fs.copyFileSync('THIRD_PARTY_NOTICES.md', 'dist/THIRD_PARTY_NOTICES.md');

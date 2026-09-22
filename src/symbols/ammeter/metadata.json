@@ -1,0 +1,38 @@
+{
+  "type": "ammeter",
+  "name": "Ammeter",
+  "category": "measurement",
+  "width": 40,
+  "height": 40,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "passive"
+    },
+    "2": {
+      "x": 40,
+      "y": 20,
+      "dir": "right",
+      "io": "passive"
+    }
+  },
+  "body": {
+    "x": 8,
+    "y": 8,
+    "w": 24,
+    "h": 24
+  },
+  "prefix": "MA",
+  "typeAliases": [
+    "current_meter",
+    "current_probe"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

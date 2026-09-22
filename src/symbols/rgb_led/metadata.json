@@ -1,0 +1,70 @@
+{
+  "type": "rgb_led",
+  "name": "RGB LED",
+  "category": "semiconductor",
+  "width": 60,
+  "height": 80,
+  "pins": {
+    "R": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "in"
+    },
+    "G": {
+      "x": 0,
+      "y": 40,
+      "dir": "left",
+      "io": "in"
+    },
+    "B": {
+      "x": 0,
+      "y": 60,
+      "dir": "left",
+      "io": "in"
+    },
+    "COM": {
+      "x": 60,
+      "y": 40,
+      "dir": "right",
+      "io": "passive"
+    }
+  },
+  "aliases": {
+    "1": "R",
+    "2": "G",
+    "3": "B",
+    "4": "COM",
+    "red": "R",
+    "green": "G",
+    "blue": "B",
+    "common": "COM",
+    "cathode": "COM",
+    "anode": "COM",
+    "k": "COM"
+  },
+  "body": {
+    "x": 12,
+    "y": 8,
+    "w": 36,
+    "h": 64
+  },
+  "prefix": "D",
+  "labels": "right",
+  "required": [
+    "R",
+    "G",
+    "B",
+    "COM"
+  ],
+  "typeAliases": [
+    "led_rgb",
+    "rgbled"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

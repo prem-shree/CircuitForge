@@ -1,0 +1,80 @@
+{
+  "type": "esp32",
+  "name": "ESP32-style board",
+  "category": "board",
+  "kind": "box",
+  "label": "ESP32",
+  "pins": {
+    "left": [
+      "EN",
+      "GPIO36",
+      "GPIO39",
+      "GPIO34",
+      "GPIO35",
+      "GPIO32",
+      "GPIO33",
+      "GPIO25"
+    ],
+    "right": [
+      "GPIO26",
+      "GPIO27",
+      "GPIO14",
+      "GPIO12",
+      "GPIO13",
+      "GPIO21",
+      "GPIO22",
+      "GPIO23"
+    ],
+    "top": [
+      "3V3",
+      "VIN"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "sda": "GPIO21",
+    "scl": "GPIO22",
+    "mosi": "GPIO23",
+    "en": "EN",
+    "reset": "EN",
+    "vcc": "3V3"
+  },
+  "pinIO": {
+    "GPIO26": "bidirectional",
+    "GPIO27": "bidirectional",
+    "GPIO14": "bidirectional",
+    "GPIO12": "bidirectional",
+    "GPIO13": "bidirectional",
+    "GPIO21": "bidirectional",
+    "GPIO22": "bidirectional",
+    "GPIO23": "bidirectional",
+    "GPIO32": "bidirectional",
+    "GPIO33": "bidirectional",
+    "GPIO25": "bidirectional",
+    "GPIO36": "in",
+    "GPIO39": "in",
+    "GPIO34": "in",
+    "GPIO35": "in",
+    "3V3": "power_out",
+    "VIN": "power_in",
+    "GND": "power_in",
+    "EN": "in"
+  },
+  "required": [
+    "GND"
+  ],
+  "typeAliases": [
+    "esp32_board",
+    "esp8266",
+    "nodemcu",
+    "wroom"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

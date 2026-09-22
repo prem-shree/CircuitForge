@@ -1,0 +1,111 @@
+{
+  "title": "ADC Input Conditioning",
+  "description": "A sensor divider is buffered by an op-amp and filtered before an ADC input.",
+  "education": {
+    "summary": "An ADC samples a voltage against its reference. A buffer keeps the source impedance low so the sample capacitor charges in time; the RC filter removes noise above half the sample rate.",
+    "objectives": [
+      "Compute ADC resolution",
+      "Explain why a buffer is needed",
+      "Set an anti-alias filter"
+    ],
+    "questions": [
+      "With a 3.3 V reference and 10 bits, how many millivolts is one step?"
+    ]
+  },
+  "components": [
+    {
+      "id": "SNS",
+      "type": "temperature_sensor",
+      "value": "LM35",
+      "section": "input"
+    },
+    {
+      "id": "U1",
+      "type": "opamp",
+      "value": "MCP6002"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "value": "100nF"
+    },
+    {
+      "id": "U2",
+      "type": "adc",
+      "value": "10-bit"
+    },
+    {
+      "id": "OUT",
+      "type": "output",
+      "label": "DATA"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+3V3"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "SNS.VCC",
+      "VCC"
+    ],
+    [
+      "SNS.GND",
+      "GND"
+    ],
+    [
+      "SNS.OUT",
+      "U1.in+"
+    ],
+    {
+      "pins": [
+        "U1.out",
+        "U1.in-",
+        "R1.1"
+      ],
+      "net": "BUF"
+    },
+    {
+      "pins": [
+        "R1.2",
+        "C1.1",
+        "U2.IN"
+      ],
+      "net": "ADC_IN"
+    },
+    [
+      "C1.2",
+      "GND"
+    ],
+    [
+      "U1.v+",
+      "VCC"
+    ],
+    [
+      "U1.v-",
+      "GND"
+    ],
+    [
+      "U2.OUT",
+      "OUT"
+    ]
+  ],
+  "measurements": [
+    {
+      "type": "voltage",
+      "at": "ADC_IN",
+      "label": "V(adc)",
+      "expected": "10 mV/°C"
+    }
+  ]
+}

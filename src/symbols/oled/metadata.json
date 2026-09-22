@@ -1,0 +1,37 @@
+{
+  "type": "oled",
+  "name": "OLED display",
+  "category": "display",
+  "kind": "box",
+  "label": "OLED",
+  "pins": {
+    "left": [
+      "VCC",
+      "SDA",
+      "SCL"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "DS",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "SDA": "bidirectional",
+    "SCL": "in"
+  },
+  "required": [
+    "VCC",
+    "GND"
+  ],
+  "typeAliases": [
+    "ssd1306",
+    "oled_i2c"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

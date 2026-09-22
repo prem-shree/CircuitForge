@@ -1,0 +1,47 @@
+{
+  "type": "motor_driver",
+  "name": "Motor driver",
+  "category": "output_device",
+  "kind": "box",
+  "label": "DRV",
+  "pins": {
+    "left": [
+      "IN1",
+      "IN2",
+      "EN"
+    ],
+    "right": [
+      "OUT1",
+      "OUT2"
+    ],
+    "top": [
+      "VCC",
+      "VM"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "VM": "power_in",
+    "GND": "power_in",
+    "OUT1": "out",
+    "OUT2": "out"
+  },
+  "required": [
+    "VCC",
+    "GND"
+  ],
+  "typeAliases": [
+    "h_bridge",
+    "l293d",
+    "drv8833"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

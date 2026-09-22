@@ -1,0 +1,37 @@
+{
+  "type": "motor",
+  "name": "DC motor",
+  "category": "output_device",
+  "width": 60,
+  "height": 40,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 20,
+      "dir": "left",
+      "io": "passive"
+    },
+    "2": {
+      "x": 60,
+      "y": 20,
+      "dir": "right",
+      "io": "passive"
+    }
+  },
+  "body": {
+    "x": 10,
+    "y": 4,
+    "w": 40,
+    "h": 32
+  },
+  "prefix": "M",
+  "typeAliases": [
+    "dc_motor"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

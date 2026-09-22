@@ -7,7 +7,7 @@ import { History } from '../src/editor/history.js';
 import { buildPDF } from '../src/exporters/pdf.js';
 import { handleRequest } from '../src/api/handler.js';
 
-const bjt = JSON.parse(fs.readFileSync(new URL('../samples/07-bjt-amplifier.json', import.meta.url), 'utf8'));
+const bjt = JSON.parse(fs.readFileSync(new URL('../examples/08-bjt-amplifier.json', import.meta.url), 'utf8'));
 
 test('formatJSON round-trips and keeps connections one per line', () => {
   const text = formatJSON(bjt);

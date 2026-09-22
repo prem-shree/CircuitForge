@@ -36,6 +36,16 @@
     ]
   },
   "prefix": "U",
+  "pinIO": {
+    "D0": "bidirectional",
+    "D1": "bidirectional",
+    "D2": "bidirectional",
+    "D3": "bidirectional",
+    "D4": "bidirectional",
+    "D5": "bidirectional",
+    "D6": "bidirectional",
+    "D7": "bidirectional"
+  },
   "typeAliases": [
     "ram",
     "rom",

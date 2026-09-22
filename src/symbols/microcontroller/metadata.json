@@ -38,6 +38,21 @@
     "vdd": "VCC",
     "vss": "GND"
   },
+  "pinIO": {
+    "PA0": "bidirectional",
+    "PA1": "bidirectional",
+    "PA2": "bidirectional",
+    "PA3": "bidirectional",
+    "PA4": "bidirectional",
+    "PB0": "bidirectional",
+    "PB1": "bidirectional",
+    "PB2": "bidirectional",
+    "PB3": "bidirectional",
+    "PB4": "bidirectional",
+    "PB5": "bidirectional",
+    "PB6": "bidirectional",
+    "PB7": "bidirectional"
+  },
   "typeAliases": [
     "mcu",
     "micro"

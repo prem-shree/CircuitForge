@@ -1,0 +1,73 @@
+{
+  "type": "relay",
+  "name": "Relay (SPDT)",
+  "category": "electromechanical",
+  "svg": "symbol.svg",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "A1": {
+      "x": 0,
+      "y": 10,
+      "dir": "left",
+      "io": "in"
+    },
+    "A2": {
+      "x": 60,
+      "y": 10,
+      "dir": "right",
+      "io": "in"
+    },
+    "COM": {
+      "x": 0,
+      "y": 40,
+      "dir": "left"
+    },
+    "NC": {
+      "x": 60,
+      "y": 30,
+      "dir": "right"
+    },
+    "NO": {
+      "x": 60,
+      "y": 50,
+      "dir": "right"
+    }
+  },
+  "aliases": {
+    "1": "A1",
+    "2": "A2",
+    "3": "COM",
+    "4": "NC",
+    "5": "NO",
+    "coil1": "A1",
+    "coil2": "A2",
+    "common": "COM",
+    "nc": "NC",
+    "no": "NO"
+  },
+  "body": {
+    "x": 4.8,
+    "y": 2.4,
+    "w": 51.2,
+    "h": 55.2
+  },
+  "prefix": "K",
+  "labels": "top",
+  "required": [
+    "A1",
+    "A2",
+    "COM"
+  ],
+  "typeAliases": [
+    "relay_spdt"
+  ],
+  "origin": {
+    "library": "chris-pikul/electronic-symbols",
+    "url": "https://github.com/chris-pikul/electronic-symbols",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2022 Chris Pikul",
+    "file": "SVG/Relay-COM-COM-SPDT.svg",
+    "modified_note": "scaled 0.4, stroke normalized to currentColor"
+  }
+}

@@ -1,0 +1,141 @@
+{
+  "title": "PWM Motor Drive",
+  "description": "A 555 in astable mode drives a MOSFET that switches a motor, with a flyback diode.",
+  "education": {
+    "summary": "PWM switches the load on and off quickly; the average voltage sets the speed. The flyback diode gives the motor current somewhere to go when the switch opens.",
+    "objectives": [
+      "Compute a 555 astable frequency",
+      "Explain duty cycle",
+      "Know why inductive loads need a flyback diode"
+    ],
+    "experiments": [
+      "Change R2 and watch the duty cycle and motor speed change."
+    ]
+  },
+  "components": [
+    {
+      "id": "U1",
+      "type": "timer_555",
+      "value": "NE555"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "4.7kΩ"
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "10kΩ"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor",
+      "value": "100nF"
+    },
+    {
+      "id": "C2",
+      "type": "capacitor",
+      "value": "10nF"
+    },
+    {
+      "id": "RG",
+      "type": "resistor",
+      "value": "100Ω"
+    },
+    {
+      "id": "Q1",
+      "type": "nmos",
+      "value": "IRLZ44N"
+    },
+    {
+      "id": "D1",
+      "type": "schottky",
+      "value": "1N5819"
+    },
+    {
+      "id": "M1",
+      "type": "motor",
+      "value": "12V DC"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+12V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    [
+      "U1.VCC",
+      "U1.RST",
+      "R1.1",
+      "VCC"
+    ],
+    [
+      "R1.2",
+      "R2.1",
+      "U1.DIS"
+    ],
+    {
+      "pins": [
+        "R2.2",
+        "U1.THR",
+        "U1.TRIG",
+        "C1.1"
+      ],
+      "net": "TIMING"
+    },
+    [
+      "C1.2",
+      "GND"
+    ],
+    [
+      "U1.CV",
+      "C2.1"
+    ],
+    [
+      "C2.2",
+      "GND"
+    ],
+    [
+      "U1.GND",
+      "GND"
+    ],
+    [
+      "U1.OUT",
+      "RG.1"
+    ],
+    [
+      "RG.2",
+      "Q1.G"
+    ],
+    {
+      "pins": [
+        "Q1.D",
+        "M1.2",
+        "D1.anode"
+      ],
+      "net": "MOTOR-"
+    },
+    [
+      "M1.1",
+      "D1.cathode",
+      "VCC"
+    ],
+    [
+      "Q1.S",
+      "GND"
+    ]
+  ],
+  "annotations": [
+    {
+      "text": "D1 carries the motor current\nwhen Q1 turns off",
+      "at": "D1",
+      "dy": -46
+    }
+  ]
+}

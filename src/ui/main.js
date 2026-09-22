@@ -1,5 +1,5 @@
 import './styles.css';
-import { render, validate, listTypes } from '../engine.js';
+import { render, validate, listTypes, explainType, explainCircuit, RULE_HELP } from '../engine.js';
 import { parseJSON } from '../parser/index.js';
 import { resolveSymbol } from '../symbol-loader/index.js';
 import { History } from '../editor/history.js';
@@ -7,13 +7,14 @@ import { formatJSON, deleteComponent, renameComponent, updateComponent, pinLayou
 import { download, toPNG, toJPEG, toPDF, copyText, copyPNG, slug } from '../exporters/index.js';
 import { handleRequest } from '../api/handler.js';
 import { Canvas } from './canvas.js';
-import { SAMPLES } from './samples.js';
+import { EXAMPLES } from './examples.js';
 
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
 
 // Public scripting API (see the API dialog).
-window.CircuitForge = { render, validate, types: listTypes };
+window.CircuitForge = { render, validate, types: listTypes, explain: explainType, explainCircuit };
 
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
@@ -55,7 +56,7 @@ darkQuery.addEventListener('change', () => update());
 // ---------------------------------------------------------------- rendering
 function update({ fit = false } = {}) {
   const parsed = parseJSON(state.text);
-  let errors = [], warnings = [];
+  let errors = [], warnings = [], findings = [];
   if (parsed.errors.length) {
     errors = parsed.errors;
     canvas.setStale(true);
@@ -64,6 +65,7 @@ function update({ fit = false } = {}) {
     const r = render(parsed.value, { theme: isDark() ? 'dark' : 'light', background: null, interactive: true, bridges: state.bridges });
     errors = r.errors;
     warnings = r.warnings;
+    findings = r.findings || [];
     if (r.valid) {
       state.result = r;
       canvas.setSVG(r.svg, r.viewBox, { keepView: !fit });
@@ -77,19 +79,23 @@ function update({ fit = false } = {}) {
   }
   const comps = Array.isArray(state.circuit?.components) ? state.circuit.components.length : 0;
   $('#empty-state').hidden = !(comps === 0 && !errors.length);
-  showProblems(errors, warnings);
-  updateStatus(errors, warnings);
+  state.findings = findings;
+  showProblems(errors, warnings, findings);
+  updateStatus(errors, warnings, findings);
   updateGutter(errors);
   store.set('cf-last', state.text);
 }
 
-function updateStatus(errors, warnings) {
+function updateStatus(errors, warnings, findings = []) {
   const st = $('#status');
-  st.classList.toggle('error', errors.length > 0);
-  st.classList.toggle('warning', !errors.length && warnings.length > 0);
+  const designErrors = findings.filter((f) => f.severity === 'error');
+  const issues = warnings.length + findings.filter((f) => f.severity !== 'info').length;
+  st.classList.toggle('error', errors.length + designErrors.length > 0);
+  st.classList.toggle('warning', !errors.length && !designErrors.length && issues > 0);
   $('#status-text').textContent = errors.length
     ? `${errors.length} error${errors.length > 1 ? 's' : ''}`
-    : warnings.length ? `Rendered · ${warnings.length} warning${warnings.length > 1 ? 's' : ''}` : 'Rendered';
+    : designErrors.length ? `${designErrors.length} design error${designErrors.length > 1 ? 's' : ''}`
+      : issues ? `Rendered · ${issues} issue${issues > 1 ? 's' : ''}` : 'Rendered';
   const scene = state.result?.scene;
   if (scene) {
     const nets = [...scene.netlist.nets.values()].length;
@@ -113,10 +119,14 @@ function lineOf(p) {
     || null;
 }
 
-function showProblems(errors, warnings) {
+function showProblems(errors, warnings, findings = []) {
   const list = $('#problems-list');
   list.textContent = '';
-  const all = [...errors.map((e) => ({ ...e, level: 'error' })), ...warnings.map((w) => ({ ...w, level: 'warning' }))];
+  const all = [
+    ...errors.map((e) => ({ ...e, level: 'error' })),
+    ...findings.map((f) => ({ ...f, level: f.severity === 'error' ? 'error' : f.severity === 'info' ? 'info' : 'warning' })),
+    ...warnings.map((w) => ({ ...w, level: 'warning' })),
+  ];
   $('#problems-title').textContent = all.length ? `Problems (${all.length})` : 'Problems';
   if (!all.length) {
     const li = document.createElement('li');
@@ -131,7 +141,14 @@ function showProblems(errors, warnings) {
     li.innerHTML = '<span class="ico"></span><span class="code"></span><span class="msg"></span>';
     li.querySelector('.code').textContent = p.code;
     li.querySelector('.msg').textContent = p.message + (p.line && !/line \d/.test(p.message) ? ` (line ${p.line})` : '');
-    li.title = 'Show in editor';
+    if (p.hint || p.formula) {
+      const extra = document.createElement('span');
+      extra.className = 'hint';
+      extra.textContent = [p.formula, p.hint].filter(Boolean).join(' · ');
+      li.append(extra);
+    }
+    const help = RULE_HELP[p.code];
+    li.title = help ? `${help.title}\n\n${help.why}\n\nFix: ${help.fix}` : 'Show in editor';
     li.addEventListener('click', () => {
       const line = lineOf(p);
       if (p.component && state.result?.scene.instances.has(p.component)) select(p.component);
@@ -221,8 +238,22 @@ function fillInspector() {
   f.label.value = comp.label ?? '';
   f.rotation.value = comp.rotation !== undefined ? String(comp.rotation) : '';
   f.mirror.checked = !!comp.mirror;
-  const pins = I.part.sym.pinOrder;
-  $('#inspector-pins').innerHTML = `<b>Pins</b><br>${pins.map((p) => `<code>${p.replace(/[&<>]/g, '')}</code>`).join('')}`;
+  const sym = I.part.sym;
+  const note = explainType(sym.type);
+  const pinHelp = new Map((note?.pins || []).map((p) => [p.name, p]));
+  $('#inspector-pins').innerHTML = '<b>Pins</b><br>' + sym.pinOrder.map((p) => {
+    const h = pinHelp.get(p);
+    return `<code title="${esc(h?.note || h?.electrical || '')}">${esc(p)}</code>`;
+  }).join('');
+  const box = $('#inspector-edu');
+  if (note && (note.purpose || note.formulas.length)) {
+    box.hidden = false;
+    box.innerHTML = `<b>${esc(note.name)}</b>`
+      + (note.purpose ? `<p>${esc(note.purpose)}</p>` : '')
+      + (note.formulas.length ? `<p class="formula">${note.formulas.map(esc).join('<br>')}</p>` : '')
+      + (note.mistakes.length ? `<p class="watch">Watch out: ${esc(note.mistakes[0])}</p>` : '')
+      + '<button type="button" class="btn btn-sm" data-action="learn">Learn more</button>';
+  } else box.hidden = true;
 }
 
 $('#inspector-form').addEventListener('change', (e) => {
@@ -357,14 +388,14 @@ $$('[data-menu]').forEach((btn) => {
 });
 document.addEventListener('click', (e) => { if (!e.target.closest('.menu')) closeMenus(); });
 
-const samplesMenu = $('#menu-samples');
-SAMPLES.forEach((s, i) => {
+const examplesMenu = $('#menu-examples');
+EXAMPLES.forEach((s, i) => {
   const b = document.createElement('button');
   b.setAttribute('role', 'menuitem');
-  b.innerHTML = `<span class="num">${i + 1}</span><span></span>`;
+  b.innerHTML = `<span class="num">${i ? i : '\u2605'}</span><span></span>`;
   b.lastChild.textContent = s.title;
   b.addEventListener('click', () => { closeMenus(); loadCircuit(s); });
-  samplesMenu.append(b);
+  examplesMenu.append(b);
 });
 
 function loadCircuit(c) {
@@ -409,7 +440,8 @@ const actions = {
     update();
   },
   deselect: () => select(null),
-  'load-first-sample': () => loadCircuit(SAMPLES[0]),
+  'load-first-sample': () => loadCircuit(EXAMPLES[1] || EXAMPLES[0]),
+  learn: () => { showLearn(); $('#learn-dialog').showModal(); },
 };
 document.addEventListener('click', (e) => {
   const a = e.target.closest('[data-action]');
@@ -507,6 +539,30 @@ $('#library-search').addEventListener('input', (e) => {
   $$('.lib-cat').forEach((s) => (s.hidden = !$$('.lib-item', s).some((b) => !b.hidden)));
 });
 
+// ---------------------------------------------------------------- learn dialog
+function showLearn() {
+  const info = explainCircuit(state.circuit || {}, state.findings || []);
+  const list = (title, items) => (items && items.length ? `<h3>${title}</h3><ul>${items.map((i) => `<li>${esc(i)}</li>`).join('')}</ul>` : '');
+  const parts = info.components.map((c) => `<details><summary>${esc(c.name)} <span class="t">${esc(c.type)}</span></summary>`
+    + (c.purpose ? `<p>${esc(c.purpose)}</p>` : '')
+    + (c.explanation ? `<p>${esc(c.explanation)}</p>` : '')
+    + (c.formulas.length ? `<p class="formula">${c.formulas.map(esc).join('<br>')}</p>` : '')
+    + (c.truthTable ? `<table class="tt"><tr>${c.truthTable.inputs.map((i) => `<th>${esc(i)}</th>`).join('')}<th>Y</th></tr>`
+        + c.truthTable.rows.map((r) => `<tr>${r.map((v) => `<td>${v}</td>`).join('')}</tr>`).join('') + '</table>' : '')
+    + list('Common mistakes', c.mistakes)
+    + `<p class="pins">Pins: ${c.pins.map((p) => `<code>${esc(p.name)}</code> <span>${esc(p.electrical)}</span>`).join(' · ')}</p>`
+    + '</details>').join('');
+  const rules = info.rules.map((r) => `<details><summary>${esc(r.title)} <span class="t">${esc(r.code)}</span></summary><p>${esc(r.why)}</p><p class="watch">Fix: ${esc(r.fix)}</p></details>`).join('');
+  $('#learn-body').innerHTML = (info.summary ? `<p class="lead">${esc(info.summary)}</p>` : '<p class="lead">This circuit carries no teaching notes of its own; the component notes below still apply.</p>')
+    + (info.theory ? `<p>${esc(info.theory)}</p>` : '')
+    + list('Learning objectives', info.objectives)
+    + list('Questions to answer', info.questions)
+    + list('Things to try', info.experiments)
+    + list('Troubleshooting', info.troubleshooting)
+    + (rules ? `<h3>What the checks found</h3>${rules}` : '')
+    + `<h3>Components in this circuit</h3>${parts}`;
+}
+
 // ---------------------------------------------------------------- splitter
 {
   const sp = $('#splitter');
@@ -551,5 +607,5 @@ function toast(msg, isError = false) {
 canvasEl.classList.toggle('grid-on', state.grid);
 const initial = store.get('cf-last');
 if (initial && initial.trim()) setText(initial, { fit: true });
-else setCircuit(SAMPLES[0], { fit: true });
+else setCircuit(EXAMPLES[1] || EXAMPLES[0], { fit: true });
 syncToolbar();

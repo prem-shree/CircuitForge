@@ -1,0 +1,80 @@
+{
+  "type": "rp2040",
+  "name": "RP2040-style board",
+  "category": "board",
+  "kind": "box",
+  "label": "RP2040",
+  "pins": {
+    "left": [
+      "RUN",
+      "GP0",
+      "GP1",
+      "GP2",
+      "GP3",
+      "GP4",
+      "GP5",
+      "GP6"
+    ],
+    "right": [
+      "GP7",
+      "GP8",
+      "GP9",
+      "GP10",
+      "GP16",
+      "GP17",
+      "GP25",
+      "GP26"
+    ],
+    "top": [
+      "3V3",
+      "VSYS"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "reset": "RUN",
+    "sda": "GP4",
+    "scl": "GP5",
+    "tx": "GP0",
+    "rx": "GP1",
+    "led": "GP25",
+    "vcc": "3V3"
+  },
+  "pinIO": {
+    "GP0": "bidirectional",
+    "GP1": "bidirectional",
+    "GP2": "bidirectional",
+    "GP3": "bidirectional",
+    "GP4": "bidirectional",
+    "GP5": "bidirectional",
+    "GP6": "bidirectional",
+    "GP7": "bidirectional",
+    "GP8": "bidirectional",
+    "GP9": "bidirectional",
+    "GP10": "bidirectional",
+    "GP16": "bidirectional",
+    "GP17": "bidirectional",
+    "GP25": "bidirectional",
+    "GP26": "bidirectional",
+    "3V3": "power_out",
+    "VSYS": "power_in",
+    "GND": "power_in",
+    "RUN": "in"
+  },
+  "required": [
+    "GND"
+  ],
+  "typeAliases": [
+    "pico",
+    "raspberry_pi_pico",
+    "rp2040_board"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

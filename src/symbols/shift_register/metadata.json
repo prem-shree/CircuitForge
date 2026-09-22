@@ -1,0 +1,56 @@
+{
+  "type": "shift_register",
+  "name": "Shift register",
+  "category": "digital",
+  "kind": "box",
+  "label": "SREG",
+  "pins": {
+    "left": [
+      "SER",
+      "SRCLK",
+      "RCLK",
+      "~SRCLR",
+      "~OE"
+    ],
+    "right": [
+      "QA",
+      "QB",
+      "QC",
+      "QD",
+      "QE",
+      "QF",
+      "QG",
+      "QH"
+    ],
+    "top": [
+      "VCC"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "data": "SER",
+    "ds": "SER",
+    "shcp": "SRCLK",
+    "stcp": "RCLK",
+    "latch": "RCLK",
+    "mr": "~SRCLR",
+    "oe": "~OE"
+  },
+  "required": [
+    "SER",
+    "SRCLK",
+    "RCLK"
+  ],
+  "typeAliases": [
+    "74hc595",
+    "sipo"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

@@ -7,11 +7,12 @@ import { resolveSymbol, canonicalType } from '../src/symbol-loader/index.js';
 import { makeInstance } from '../src/layout/instance.js';
 import { overlaps, inflate, segHitsRect } from '../src/utils/geometry.js';
 
-const SAMPLE_DIR = new URL('../samples/', import.meta.url);
+const SAMPLE_DIR = new URL('../examples/', import.meta.url);
 const samples = fs.readdirSync(SAMPLE_DIR).filter((f) => f.endsWith('.json'))
   .map((f) => ({ name: f, circuit: JSON.parse(fs.readFileSync(new URL(f, SAMPLE_DIR), 'utf8')) }));
 
 const codes = (r) => r.errors.map((e) => e.code);
+const example = (needle) => samples.find((s) => s.name.includes(needle)).circuit;
 
 // ---------------------------------------------------------------- parsing
 test('JSON parsing reports line and column of syntax errors', () => {
@@ -24,7 +25,7 @@ test('JSON parsing reports line and column of syntax errors', () => {
 });
 
 test('render accepts JSON text, objects and {circuit} envelopes', () => {
-  const c = samples[0].circuit;
+  const c = example('voltage-divider');
   assert.ok(render(JSON.stringify(c)).valid);
   assert.ok(render(c).valid);
   assert.ok(render({ circuit: c }).valid);
@@ -51,7 +52,7 @@ test('validation: every error class is detected', () => {
   const r = validate({
     components: [
       { id: 'R1', type: 'resistor' }, { id: 'R1', type: 'resistor' },
-      { id: 'X1', type: 'resistr' }, { id: 'M1', type: 'arduino_uno' }, { type: 'capacitor' },
+      { id: 'X1', type: 'resistr' }, { id: 'M1', type: 'raspberry_pi' }, { type: 'capacitor' },
       { id: 'C1', type: 'capacitor' }, { id: 'Q1', type: 'npn' },
     ],
     connections: [['R1.1', 'Z9.1'], ['R1.1'], ['R1.1', 'R1.1'], ['C1', 'R1.2'], 'bad', ['R1.2', 'C1.1'], ['C1.1', 'R1.2'], ['Q1.B', 'C1.2']],
@@ -189,16 +190,16 @@ for (const { name, circuit } of samples) {
 
 // ---------------------------------------------------------------- junctions and crossings
 test('junctions: dots only where three or more wires/pins meet', () => {
-  const vd = buildScene(samples.find((s) => s.name.startsWith('01')).circuit).scene;
+  const vd = buildScene(example('voltage-divider')).scene;
   assert.equal(vd.routing.junctions.length, 0, 'a simple loop has no junctions');
-  const rc = buildScene(samples.find((s) => s.name.startsWith('03')).circuit).scene;
+  const rc = buildScene(example('rc-lowpass')).scene;
   assert.ok(rc.routing.junctions.length >= 1, 'R1/C1/VOUT node has a junction');
   const outNet = rc.netlist.nets.get(rc.instances.get('C1').part.pinNets['1']);
   assert.ok(rc.routing.junctions.every((j) => j.net === outNet.id));
 });
 
 test('crossings: unconnected crossings get no dot, and bridges are drawn on request', () => {
-  const circuit = samples.find((s) => s.name.startsWith('10')).circuit;
+  const circuit = example('full-adder');
   const { scene } = buildScene(circuit);
   const { crossings, junctions } = scene.routing;
   assert.ok(crossings.length > 0, 'the full adder has wire crossings');
@@ -224,7 +225,7 @@ test('rails: ground/VCC become per-pin markers and net labels merge nets', () =>
 });
 
 test('explicit positions are respected and wires re-route', () => {
-  const c = structuredClone(samples[0].circuit);
+  const c = structuredClone(example('voltage-divider'));
   c.components.find((x) => x.id === 'R2').position = { x: 400, y: 200 };
   c.components.find((x) => x.id === 'R2').rotation = 90;
   const { scene } = buildScene(c);
