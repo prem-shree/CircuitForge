@@ -69,7 +69,9 @@ test('validation: every error class is detected', () => {
 test('validation: schema errors', () => {
   assert.deepEqual(codes(validate([])), ['INVALID_SCHEMA']);
   assert.deepEqual(codes(validate({ components: 3 })), ['INVALID_SCHEMA']);
-  assert.ok(codes(validate({ components: [{ id: 'R1', type: 'resistor', rotation: 45 }] })).includes('INVALID_PROPERTY'));
+  assert.ok(codes(validate({ components: [{ id: 'R1', type: 'resistor', rotation: 'sideways' }] })).includes('INVALID_PROPERTY'));
+  assert.ok(codes(validate({ components: [{ id: 'R1', type: 'resistor', rotation: 90, angle: 45 }] })).includes('INVALID_PROPERTY'));
+  assert.deepEqual(codes(validate({ components: [{ id: 'R1', type: 'resistor', rotation: 45 }, { id: 'R2', type: 'resistor', angle: -30 }], connections: [['R1.2', 'R2.1']] })), []);
 });
 
 test('validation: pin aliases and type aliases resolve', () => {
@@ -104,11 +106,13 @@ test('component anchors: all pins sit on the 10px grid relative to the origin', 
 
 test('component anchors transform with rotation and mirroring', () => {
   const part = { id: 'R1', comp: { id: 'R1' }, sym: resolveSymbol({ type: 'resistor' }), pinNets: {} };
-  const a = makeInstance(part, 100, 50, 0, false);
+  const pick = (p) => ({ x: p.x, y: p.y, dir: p.dir });
+  const inst = (...args) => { const I = makeInstance(...args); return { pins: Object.fromEntries(Object.entries(I.pins).map(([k, v]) => [k, pick(v)])) }; };
+  const a = inst(part, 100, 50, 0, false);
   assert.deepEqual([a.pins['1'], a.pins['2']], [{ x: 100, y: 50, dir: 'left' }, { x: 160, y: 50, dir: 'right' }]);
-  const b = makeInstance(part, 100, 50, 90, false);
+  const b = inst(part, 100, 50, 90, false);
   assert.deepEqual([b.pins['1'], b.pins['2']], [{ x: 100, y: 50, dir: 'up' }, { x: 100, y: 110, dir: 'down' }]);
-  const c = makeInstance(part, 100, 50, 0, true);
+  const c = inst(part, 100, 50, 0, true);
   assert.deepEqual(c.pins['2'], { x: 40, y: 50, dir: 'left' });
 });
 

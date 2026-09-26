@@ -57,7 +57,7 @@ Unknown top-level fields produce an `UNKNOWN_FIELD` warning so typos surface ins
   "type": "nmos",                   // required, type or alias
   "value": "IRLZ44N",               // drawn next to the part
   "label": "M1",                    // display name instead of the id
-  "rotation": 90,                   // 0 | 90 | 180 | 270, clockwise
+  "rotation": 90,                   // clockwise degrees, any angle ("angle" is an alias)
   "mirror": false,                  // mirrored before rotating
   "position": { "x": 320, "y": 180 },// world position of the part's first pin
   "section": "output",              // input | process | output | power
@@ -75,9 +75,14 @@ Unknown top-level fields produce an `UNKNOWN_FIELD` warning so typos surface ins
 ### Rotation
 
 `rotation` turns the drawing **and** the pin coordinates together, so wires stay attached.
-Valid values are `0`, `90`, `180`, `270` (clockwise). `mirror` flips horizontally first.
+Any angle works, clockwise in degrees (`45`, `30`, `-90`…; `angle` is an alias). At a
+non-right angle each pin connects at the nearest grid point just outside its lead, and the lead
+is drawn out to it; wires leave along the pin's own direction. `mirror` flips horizontally first.
 Leave `rotation` out and CircuitForge picks an orientation: sources stand up with + on top,
 two-terminal parts that touch a rail hang towards it, and the rest lie flat along the signal flow.
+Four two-terminal parts in a ring whose opposite corners are bridged — a bridge rectifier or a
+Wheatstone bridge — are drawn as the textbook diamond at 45°, with the meter of a Wheatstone
+bridge in the middle (turn this off with `"layout": { "bridges": false }`).
 
 ### Pins
 
@@ -167,16 +172,26 @@ connections as you like. `junction` is a virtual part that merges whatever conne
 ## Layout
 
 ```jsonc
+"layout": { "spacing": "comfortable" }
 "layout": { "grid": 20, "componentGap": 60, "wireGap": 20, "labelGap": 15, "sectionGap": 100 }
 ```
 
 | Field | Default | Meaning |
 |---|---|---|
+| `spacing` | `auto` | Preset for every gap: `compact`, `normal`, `comfortable`, `spacious`. `auto` uses comfortable up to 6 parts, normal up to 24 and a tighter set beyond. |
 | `grid` | 10 | Placement grid, rounded to a multiple of the 10px routing grid. |
 | `componentGap` | 40 | Gap between columns. Grows automatically where many nets cross. |
-| `wireGap` | 16 | Clearance kept around each part. |
+| `wireGap` | 16 | Clearance kept around each part; busier parts get a little more. |
 | `labelGap` | 6 | Gap between a part and its text. |
 | `sectionGap` | 60 | Gap between sub-circuits joined only through rails. |
+| `bridges` | `true` | Draw bridge rectifiers and Wheatstone bridges as diamonds. |
+| `optimize` | `true` | Let the spacing optimizer retry crowded layouts. |
+
+Defaults shown are the `normal` preset. A number you set is always kept; the others follow the
+preset. After routing, the layout is scored (routing fallbacks, wires through parts, labels on
+wires, crossings, bends, wire length, area). If something collides, the optimizer widens only the
+gap where the problem is — the column gap it sits in, or part clearance and label distance — and
+tries again, up to four times, keeping the best sheet. The result is in `scene.layoutInfo`.
 
 The default flow is inputs on the left, processing in the middle, outputs on the right, supply
 symbols pointing up and grounds pointing down. `section` on a component overrides the band it

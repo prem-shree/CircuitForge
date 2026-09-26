@@ -1,5 +1,14 @@
 // A placed component: world pins, body, rail markers, labels and total extent.
-import { DIRS, OPPOSITE, xform, xformDir, xformRect, rotateVec, vecToDir, unionRect, boundsOf, textWidth } from '../utils/geometry.js';
+//
+// Any rotation angle is allowed. At right angles every pin lands on the 10px
+// routing grid by construction. At other angles each pin tip is moved to the
+// nearest grid point that lies further out along the pin (preferring points on
+// the pin's own line), and a short lead extension is drawn from the symbol's
+// lead to that point, so wires still end exactly on the pin.
+import {
+  DIRS, OPPOSITE, GRID, xform, xformVec, xformRect, rectPoly, rotateVec, vecToDir, unionRect, boundsOf, textWidth,
+  normAngle, inflate,
+} from '../utils/geometry.js';
 
 export const REF_SIZE = 11;
 export const VALUE_SIZE = 10.5;
@@ -14,15 +23,68 @@ function label(text, x, y, anchor, cls, size) {
   return { text: String(text), x, y, anchor, cls, size, box: textBox(text, x, y, anchor, size) };
 }
 
+// Grid point for an angled pin: never inside the lead (no spur past the tip),
+// close by, and preferably on the pin's own line so the extension is straight.
+function outwardGridPoint(p, v) {
+  const bx = Math.floor(p.x / GRID) * GRID, by = Math.floor(p.y / GRID) * GRID;
+  let best = null, bestScore = Infinity;
+  for (let i = -1; i <= 2; i++) for (let j = -1; j <= 2; j++) {
+    const c = { x: bx + i * GRID, y: by + j * GRID };
+    const dx = c.x - p.x, dy = c.y - p.y;
+    const along = dx * v.x + dy * v.y;
+    if (along < -1e-6) continue;
+    const perp = Math.abs(dx * v.y - dy * v.x);
+    const score = Math.hypot(dx, dy) + 3 * perp;
+    if (score < bestScore) { bestScore = score; best = c; }
+  }
+  return best;
+}
+
+// Axis directions a wire may leave an angled pin by (those pointing outward).
+function exitsFor(v) {
+  return Object.entries(DIRS)
+    .map(([name, d]) => [name, d.x * v.x + d.y * v.y])
+    .filter(([, dot]) => dot > 0.2)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name);
+}
+
+// Where the lead of a pin meets the body, in symbol coordinates.
+function leadInner(sym, p) {
+  const b = sym.body, d = DIRS[p.dir];
+  let dist = d.x < 0 ? b.x - p.x : d.x > 0 ? p.x - (b.x + b.w) : d.y < 0 ? b.y - p.y : p.y - (b.y + b.h);
+  const inside = d.x ? p.y >= b.y && p.y <= b.y + b.h : p.x >= b.x && p.x <= b.x + b.w;
+  if (!inside) dist = Math.min(dist, 30);
+  dist = Math.max(0, Math.min(60, dist));
+  return { x: p.x - d.x * dist, y: p.y - d.y * dist };
+}
+
+// Rotated body outline, optionally grown or shrunk by d on every side.
+export const bodyPoly = (I, d = 0) => rectPoly(d ? inflate(I.part.sym.body, d) : I.part.sym.body, I.t);
+
 export function makeInstance(part, x, y, rot, mirror, nets, cfg = {}) {
   const s = part.sym;
-  const t = { x, y, rot, mirror, ox: s.origin.x, oy: s.origin.y };
+  const angle = normAngle(rot);
+  const ortho = angle % 90 === 0;
+  const t = { x, y, rot: angle, mirror, ox: s.origin.x, oy: s.origin.y };
+  // part.cluster (set by bridge layouts) pins tips and exit sides explicitly
+  const ov = part.cluster || null;
   const pins = {};
   for (const n of s.pinOrder) {
-    const w = xform(s.pins[n], t);
-    pins[n] = { x: w.x, y: w.y, dir: xformDir(s.pins[n].dir, t) };
+    const lp = s.pins[n];
+    const exact = xform(lp, t);
+    const vec = xformVec(DIRS[lp.dir], t);
+    let tip = exact;
+    if (ov?.tips?.[n]) tip = { x: x + ov.tips[n].dx, y: y + ov.tips[n].dy };
+    else if (!ortho || exact.x % GRID || exact.y % GRID) tip = outwardGridPoint(exact, vec);
+    const dir = ov?.dirs?.[n] || vecToDir(vec);
+    const exits = ov?.dirs?.[n] || ortho ? [dir] : exitsFor(vec);
+    const pin = { x: tip.x, y: tip.y, dir, exits, vec, inner: xform(leadInner(s, lp), t) };
+    if (Math.hypot(tip.x - exact.x, tip.y - exact.y) > 0.01) pin.ext = [exact, { x: tip.x, y: tip.y }];
+    pins[n] = pin;
   }
-  const inst = { id: part.id, part, t, x, y, rot, mirror, pins, body: xformRect(s.body, t) };
+  const poly = rectPoly(s.body, t);
+  const inst = { id: part.id, part, t, x, y, rot: angle, mirror, pins, poly, body: boundsOf(poly) };
   inst.markers = buildMarkers(inst, nets);
   const sets = buildLabels(inst, cfg.labelGap ?? 6).filter(Boolean);
   inst.labelSets = sets;
@@ -172,6 +234,38 @@ function buildLabels(inst, gap) {
   };
   const horizontalPins = s.twoTerminal && ['left', 'right'].includes(inst.pins[s.pinOrder[0]].dir);
 
+  // Angled parts: text beside the part, offset square to its axis.
+  if (inst.rot % 90 !== 0 && s.twoTerminal) {
+    const a = inst.pins[s.pinOrder[0]], z = inst.pins[s.pinOrder[1]];
+    const len = Math.hypot(z.x - a.x, z.y - a.y) || 1;
+    const ax = { x: (z.x - a.x) / len, y: (z.y - a.y) / len };
+    const mid = boundsOf(inst.poly);
+    const center = { x: mid.x + mid.w / 2, y: mid.y + mid.h / 2 };
+    const off0 = Math.min(s.body.w, s.body.h) / 2 + gap + 6;
+    const beside = (px, py, off = off0, slide = 0) => {
+      const p = { x: center.x + px * off + ax.x * slide, y: center.y + py * off + ax.y * slide };
+      const anchor = px > 0.3 ? 'start' : px < -0.3 ? 'end' : 'middle';
+      const lines = value ? [[ref, 'ref', REF_SIZE], [value, 'value', VALUE_SIZE]] : [[ref, 'ref', REF_SIZE]];
+      // stack away from the part: upward when above it, downward when below
+      const firstY = py < -0.3 ? p.y - (lines.length - 1) * 12 : py > 0.3 ? p.y + 9 : p.y + 4 - (lines.length - 1) * 6;
+      return lines.map(([txt, cls, size], i) => label(txt, p.x, firstY + i * 12, anchor, cls, size));
+    };
+    const n1 = { x: -ax.y, y: ax.x }, n2 = { x: ax.y, y: -ax.x };
+    const cc = inst.part.cluster?.center;
+    if (cc) {
+      // on a bridge diamond, text goes on the outside, never in the middle
+      const toPart = { x: center.x - (inst.x + cc.dx), y: center.y - (inst.y + cc.dy) };
+      const out = n1.x * toPart.x + n1.y * toPart.y >= 0 ? n1 : n2;
+      const spots = [];
+      for (const off of [off0, off0 + 14]) for (const slide of [0, -16, 16]) spots.push(beside(out.x, out.y, off, slide));
+      return spots;
+    } else {
+      // the upper side first: text above a diagonal part reads most naturally
+      const [up, down] = n1.y <= n2.y ? [n1, n2] : [n2, n1];
+      sets.push(beside(up.x, up.y), beside(down.x, down.y));
+    }
+  }
+
   // Stacked above / below / split, used by the flat orientations.
   const stack = (where) => {
     const out = [];
@@ -193,12 +287,14 @@ function buildLabels(inst, gap) {
   } else if (s.twoTerminal || s.labels === 'right') {
     sets.push(side(true), side(false), stack('above'), stack('below'));
   } else if (s.labels === 'topright') {
-    const corner = (x, anchor) => {
-      const out = [label(ref, x, b.y + 3, anchor, 'ref', REF_SIZE)];
-      if (value) out.push(label(value, x, b.y + 15, anchor, 'value', VALUE_SIZE));
+    const corner = (x, anchor, y = b.y + 3) => {
+      const out = [label(ref, x, y, anchor, 'ref', REF_SIZE)];
+      if (value) out.push(label(value, x, y + 12, anchor, 'value', VALUE_SIZE));
       return out;
     };
-    sets.push(corner(cx + 16, 'start'), corner(b.x - gap, 'end'), stack('above'));
+    // the last two clear supply-pin markers above and below the body
+    sets.push(corner(cx + 16, 'start'), corner(b.x - gap, 'end'), stack('above'),
+      corner(cx + 14, 'start', b.y - gap - (value ? 12 : 0)), corner(cx + 14, 'start', b.y + b.h + gap + 9));
   } else if (s.labels === 'box') {
     // the value is drawn inside the box by the symbol generator
     sets.push(

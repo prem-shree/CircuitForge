@@ -20,7 +20,7 @@ JSON ─► parser ─► validator ─► net graph ─► electrical rules ─
 ```bash
 npm install
 npm run dev        # http://localhost:8080, rebuilds on change
-npm test           # 75 tests: engine, rotation, wiring, layout, exports, API, AI pipeline
+npm test           # 89 tests: engine, rotation, angles, wiring, layout, spacing, exports, API, AI pipeline
 npm run build      # static site in dist/
 npm run api        # reference HTTP + AI server on :8787
 ```
@@ -44,9 +44,10 @@ Node 20 or newer (CI uses 22). The only dependency is `esbuild`, used at build t
 |---|---|
 | Editor | JSON on the left, re-rendered as you type. Problems link to the offending line. |
 | Canvas | Wheel zooms, dragging empty space pans, **F** fits. |
-| Editing | Click to select, drag to move (20 px snap), **R** rotates, **Del** deletes, the inspector edits id/type/value/rotation. **Ctrl+Z / Ctrl+Y** undo and redo. |
+| Editing | Click to select, drag to move (20 px snap), **R** rotates 90°, **Shift+R** 45°, **Del** deletes, the inspector edits id/type/value/rotation (any angle). **Ctrl+Z / Ctrl+Y** undo and redo. |
+| Spacing | Toolbar preset: auto, compact, normal, comfortable, spacious. The status bar counts junctions and crossings. |
 | Learn | Circuit objectives, formulas, truth tables, per-part notes and an explanation of every rule that fired. |
-| Examples | 27 circuits, from an LED and a divider to I²C, SPI and a full reference sheet. |
+| Examples | 29 circuits, from an LED and a divider to bridge rectifiers, I²C, SPI and a full reference sheet. |
 | Export | SVG, PNG (2×/4×/transparent), JPEG, PDF, JSON; clipboard copy for PNG, SVG and JSON. |
 
 Manual edits are written back into the JSON as `position`/`rotation`, so the file stays the
@@ -124,14 +125,14 @@ Tune them per circuit with `"validation": { "rules": { "FLOATING_INPUT": "off" }
 
 ## Examples
 
-`examples/` holds 27 circuits, all of them tested on every run:
+`examples/` holds 29 circuits, all of them tested on every run:
 
 LED + resistor · voltage divider · RC low-pass · RL · series RLC · rectifier · transistor switch ·
 BJT amplifier · MOSFET switch · inverting op-amp · comparator · 555 astable · full adder ·
 flip-flop counter · counter + decoder · shift register · debounced button · microcontroller ·
 PWM motor drive · regulated supply · ADC front end · UART link · I²C bus · SPI bus · MCU LED and
-button · RGB LED and seven-segment · and `complete-circuit.json`, which uses every field in the
-format.
+button · RGB LED and seven-segment · bridge rectifier · Wheatstone bridge · and
+`complete-circuit.json`, which uses every field in the format.
 
 ## How it works
 
@@ -140,7 +141,11 @@ format.
 - **Layout** ([`src/layout`](src/layout)): sources stand up, parts touching a rail hang towards it,
   columns come from a BFS over signal nets with digital out→in edges relaxed into longest-path
   layers. Each part is aligned so one pin sits on its net's line. Column gaps grow where many nets
-  cross, and sub-circuits joined only through rails are packed into rows.
+  cross, and sub-circuits joined only through rails are packed into rows. Bridge rectifiers and
+  Wheatstone bridges become 45° diamonds. Parts can sit at any angle; their pins snap to the grid.
+- **Spacing** ([`src/layout/optimize.js`](src/layout/optimize.js)): each routed layout is scored;
+  where wires or labels collide the gap at that spot is widened and the layout retried, keeping
+  the best of up to four attempts.
 - **Router** ([`src/router`](src/router)): A* on a 10 px grid with (cell, heading) states so bends
   cost extra. Nets grow as Steiner-like trees; each pin's escape track is reserved for its own net;
   wires never pass through bodies or overlap another net and cross only at right angles.
@@ -209,11 +214,11 @@ src/
 ├── api/            HTTP handler, AI providers, AI routes, validation pipeline
 ├── ui/             app shell, canvas interaction, styles, bundled examples
 └── utils/          geometry, unit parsing
-examples/           27 example circuits (all tested)
+examples/           29 example circuits (all tested)
 docs/               JSON reference
 schema/             JSON Schema
 server/             reference API + AI server
-tests/              engine, rotation, wiring/layout, editor/export/API, AI pipeline
+tests/              engine, rotation, angles/spacing, wiring/layout, editor/export/API, AI pipeline
 ```
 
 ## Adding a component

@@ -30,14 +30,17 @@
 
     "layout": {
       "type": "object",
-      "description": "Spacing for the automatic layout. All values are in schematic pixels.",
+      "description": "Spacing for the automatic layout. All values are in schematic pixels; a number you set is kept, the rest follow the spacing preset.",
       "additionalProperties": false,
       "properties": {
+        "spacing": { "enum": ["auto", "compact", "normal", "comfortable", "spacious"], "default": "auto", "description": "Preset for all gaps. auto picks one from the number of parts." },
+        "bridges": { "type": "boolean", "default": true, "description": "Draw bridge rectifiers and Wheatstone bridges as 45° diamonds." },
+        "optimize": { "type": "boolean", "default": true, "description": "Score routed layouts and retry with wider gaps where wires or labels collide." },
         "grid": { "type": "number", "default": 10, "description": "Placement grid; rounded to a multiple of the 10px routing grid." },
-        "componentGap": { "type": "number", "default": 40, "description": "Horizontal gap between columns; grows automatically where many nets cross." },
-        "wireGap": { "type": "number", "default": 16, "description": "Clearance kept around each part." },
-        "labelGap": { "type": "number", "default": 6, "description": "Gap between a part and its reference/value text." },
-        "sectionGap": { "type": "number", "default": 60, "description": "Gap between sub-circuits that are only joined through rails." },
+        "componentGap": { "type": "number", "description": "Horizontal gap between columns (normal preset: 40); grows automatically where many nets cross." },
+        "wireGap": { "type": "number", "description": "Clearance kept around each part (normal preset: 16)." },
+        "labelGap": { "type": "number", "description": "Gap between a part and its reference/value text (normal preset: 6)." },
+        "sectionGap": { "type": "number", "description": "Gap between sub-circuits that are only joined through rails (normal preset: 60)." },
         "direction": { "enum": ["lr"], "description": "Reserved; signal flow is left to right." }
       }
     },
@@ -89,7 +92,8 @@
           "type": { "type": "string", "description": "Component type or alias (resistor, npn, opamp, timer_555, arduino_uno, ground, …)." },
           "value": { "type": ["string", "number"], "description": "Shown next to the part. For ground/vcc/net_label it names the rail." },
           "label": { "type": "string", "description": "Display name instead of the id; for box parts it is the text inside the box." },
-          "rotation": { "enum": [0, 90, 180, 270], "description": "Clockwise degrees. Rotates the drawing and the pin coordinates together. Omit for automatic orientation." },
+          "rotation": { "type": "number", "description": "Clockwise degrees, any angle (45, 30, -90…). Rotates the drawing and the pin coordinates together; angled pins snap to the nearest grid point outside the lead. Omit for automatic orientation." },
+          "angle": { "type": "number", "description": "Alias of rotation." },
           "mirror": { "type": "boolean", "description": "Mirror horizontally before rotating." },
           "position": {
             "type": "object",

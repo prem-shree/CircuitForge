@@ -26,5 +26,7 @@ import e23 from '../../examples/23-i2c-bus.json';
 import e24 from '../../examples/24-spi-bus.json';
 import e25 from '../../examples/25-mcu-led-button.json';
 import e26 from '../../examples/26-rgb-seven-segment.json';
+import e27 from '../../examples/27-bridge-rectifier.json';
+import e28 from '../../examples/28-wheatstone-bridge.json';
 
-export const EXAMPLES = [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18, e19, e20, e21, e22, e23, e24, e25, e26];
+export const EXAMPLES = [e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15, e16, e17, e18, e19, e20, e21, e22, e23, e24, e25, e26, e27, e28];

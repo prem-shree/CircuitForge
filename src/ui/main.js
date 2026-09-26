@@ -3,7 +3,7 @@ import { render, validate, listTypes, explainType, explainCircuit, RULE_HELP } f
 import { parseJSON } from '../parser/index.js';
 import { resolveSymbol } from '../symbol-loader/index.js';
 import { History } from '../editor/history.js';
-import { formatJSON, deleteComponent, renameComponent, updateComponent, pinLayout, rotateComponent, clearLayout, addComponent, EMPTY_CIRCUIT } from '../editor/model.js';
+import { formatJSON, deleteComponent, renameComponent, updateComponent, pinLayout, rotateComponent, clearLayout, addComponent, setSpacing, EMPTY_CIRCUIT } from '../editor/model.js';
 import { download, toPNG, toJPEG, toPDF, copyText, copyPNG, slug } from '../exporters/index.js';
 import { handleRequest } from '../api/handler.js';
 import { Canvas } from './canvas.js';
@@ -99,7 +99,8 @@ function updateStatus(errors, warnings, findings = []) {
   const scene = state.result?.scene;
   if (scene) {
     const nets = [...scene.netlist.nets.values()].length;
-    $('#status-counts').textContent = `${scene.instances.size} parts · ${nets} nets · ${scene.routing.junctions.length} junctions`;
+    $('#status-counts').textContent = `${scene.instances.size} parts · ${nets} nets · ${scene.routing.junctions.length} junctions · ${scene.routing.crossings.length} crossings`;
+    $('#spacing').value = state.circuit?.layout?.spacing || '';
     $('#status-size').textContent = `${state.result.width} × ${state.result.height} px`;
     $('#editor-meta').textContent = `${state.circuit?.components?.length ?? 0} components`;
   }
@@ -236,7 +237,7 @@ function fillInspector() {
   f.type.value = I.part.sym.type;
   f.value.value = comp.value ?? '';
   f.label.value = comp.label ?? '';
-  f.rotation.value = comp.rotation !== undefined ? String(comp.rotation) : '';
+  f.rotation.value = comp.rotation ?? comp.angle ?? '';
   f.mirror.checked = !!comp.mirror;
   const sym = I.part.sym;
   const note = explainType(sym.type);
@@ -269,7 +270,7 @@ $('#inspector-form').addEventListener('change', (e) => {
     c = renameComponent(c, id, next);
     state.selected = next;
   } else if (name === 'rotation') {
-    c = updateComponent(c, id, { rotation: f.rotation.value === '' ? undefined : Number(f.rotation.value) });
+    c = updateComponent(c, id, { rotation: f.rotation.value === '' ? undefined : Number(f.rotation.value), angle: undefined });
   } else if (name === 'mirror') {
     c = updateComponent(c, id, { mirror: f.mirror.checked || undefined });
   } else if (name === 'type' || name === 'value' || name === 'label') {
@@ -311,9 +312,9 @@ function onDragEnd(id, cancelled) {
 }
 
 // ---------------------------------------------------------------- commands
-function rotateSelected() {
+function rotateSelected(step = 90) {
   if (!state.selected || !state.result) return;
-  setCircuit(rotateComponent(state.circuit, state.result.scene.instances, state.selected));
+  setCircuit(rotateComponent(state.circuit, state.result.scene.instances, state.selected, step));
 }
 function deleteSelected() {
   if (!state.selected || !state.circuit) return;
@@ -340,7 +341,7 @@ function syncToolbar() {
 
 const tools = {
   undo, redo,
-  rotate: rotateSelected,
+  rotate: (e) => rotateSelected(e?.shiftKey ? 45 : 90),
   delete: deleteSelected,
   autolayout: () => { if (state.circuit) { setCircuit(clearLayout(state.circuit), { fit: true }); toast('Automatic layout restored'); } },
   grid: () => toggle('grid'),
@@ -351,9 +352,10 @@ const tools = {
   'zoom-reset': () => canvas.zoomTo(1),
   fit: () => canvas.fit(),
 };
+$('#spacing').addEventListener('change', (e) => { if (state.circuit) setCircuit(setSpacing(state.circuit, e.target.value)); });
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-tool]');
-  if (t && tools[t.dataset.tool]) tools[t.dataset.tool]();
+  if (t && tools[t.dataset.tool]) tools[t.dataset.tool](e);
 });
 
 document.addEventListener('keydown', (e) => {
@@ -365,7 +367,7 @@ document.addEventListener('keydown', (e) => {
   if (inField || mod || e.altKey) return;
   if (e.key === ' ') { canvas.spaceDown = true; }
   const map = { Delete: 'delete', Backspace: 'delete', r: 'rotate', R: 'rotate', f: 'fit', F: 'fit', g: 'grid', G: 'grid', s: 'snap', S: 'snap', '+': 'zoom-in', '=': 'zoom-in', '-': 'zoom-out', '0': 'zoom-reset' };
-  if (map[e.key]) { e.preventDefault(); tools[map[e.key]](); }
+  if (map[e.key]) { e.preventDefault(); tools[map[e.key]](e); }
 });
 document.addEventListener('keyup', (e) => { if (e.key === ' ') canvas.spaceDown = false; });
 

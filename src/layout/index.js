@@ -11,15 +11,21 @@
 //    feedback elements placed over their op-amp. Collisions are resolved by
 //    sliding away from the net's source (analog) or down (digital/terminals).
 import { makeInstance } from './instance.js';
+import { detectBridges } from './bridges.js';
 import { DIRS, OPPOSITE, GRID, snap, xformDir, overlaps, inflate } from '../utils/geometry.js';
 import { normalizeLayout } from './config.js';
 
-export function layoutCircuit(nl, circuit = {}) {
-  const cfg = normalizeLayout(circuit);
+export const layoutStats = (nl) => ({ parts: nl.parts.length, nets: nl.nets.size });
+
+// opts.cfg: resolved spacing (from optimize.js); opts.extraGap: extra room per
+// column boundary, added where a previous attempt found congested wiring.
+export function layoutCircuit(nl, circuit = {}, opts = {}) {
+  const cfg = opts.cfg || normalizeLayout(circuit, layoutStats(nl));
   const COL_GAP = cfg.componentGap;
   const CLEAR = cfg.wireGap;
   const STEP = cfg.grid;
   const { parts, nets } = nl;
+  for (const p of parts) delete p.cluster;
   const byId = new Map(parts.map((p) => [p.id, p]));
   const railKind = (n) => (n ? nets.get(n)?.rail?.kind : undefined);
   const pull = (n) => {
@@ -58,9 +64,21 @@ export function layoutCircuit(nl, circuit = {}) {
     }
     orient.set(p.id, { rot, mirror, flex });
   }
+  // Bridges become fixed diamonds: their parts are placed together, at 45°.
+  const clusters = cfg.bridges ? detectBridges(parts, nets) : [];
+  const clusterOf = new Map();
+  clusters.forEach((c, k) => {
+    for (const m of c.members) {
+      m.part.cluster = { tips: m.tips, dirs: m.dirs, center: m.center };
+      orient.set(m.part.id, { rot: m.rot, mirror: false, fixed: true });
+      clusterOf.set(m.part.id, k);
+    }
+  });
+
   const pinDir = (id, pin) => {
     const o = orient.get(id);
-    return xformDir(byId.get(id).sym.pins[pin].dir, { rot: o.rot, mirror: o.mirror });
+    const p = byId.get(id);
+    return p.cluster?.dirs?.[pin] || xformDir(p.sym.pins[pin].dir, { rot: o.rot, mirror: o.mirror });
   };
   const shunt = (p) => p.sym.twoTerminal && !orient.get(p.id).flex;
 
@@ -68,8 +86,11 @@ export function layoutCircuit(nl, circuit = {}) {
   const adj = new Map(parts.map((p) => [p.id, []]));
   for (const [nid, net] of nets) {
     if (!signal(nid)) continue;
+    // a part that drives the net sends its neighbours downstream, even when
+    // one of its inputs is on the same net (a follower's feedback)
+    const drives = new Map(net.pins.filter((e) => byId.get(e.comp).sym.pins[e.pin]?.io === 'out').map((e) => [e.comp, e.pin]));
     for (const e1 of net.pins) for (const e2 of net.pins) {
-      if (e1.comp !== e2.comp) adj.get(e1.comp).push({ to: e2.comp, my: e1.pin, their: e2.pin });
+      if (e1.comp !== e2.comp) adj.get(e1.comp).push({ to: e2.comp, my: drives.get(e1.comp) ?? e1.pin, their: drives.get(e2.comp) ?? e2.pin });
     }
   }
   const rank = (p) => (p.sym.source ? 0 : p.sym.terminal === 'input' ? 1 : 2);
@@ -128,6 +149,11 @@ export function layoutCircuit(nl, circuit = {}) {
       else if (p.comp.section === 'output') layer.set(p.id, maxL + 1);
     }
   }
+  // a diamond occupies one column
+  for (const c of clusters) {
+    const L = Math.min(...c.members.map((m) => layer.get(m.part.id)));
+    for (const m of c.members) layer.set(m.part.id, L);
+  }
 
   // ---- 3. placement
   const placed = [];
@@ -139,9 +165,14 @@ export function layoutCircuit(nl, circuit = {}) {
 
   const nLayers = Math.max(0, ...layer.values()) + 1;
   const colW = new Array(nLayers).fill(0);
+  const clusterSpan = (c) => {
+    const I = c.members.map((m) => makeInstance(m.part, m.x, m.y, m.rot, false, nets, cfg));
+    return Math.max(...I.map((i) => i.extent.x + i.extent.w)) - Math.min(...I.map((i) => i.extent.x));
+  };
   for (const p of parts) {
     const o = orient.get(p.id);
-    colW[layer.get(p.id)] = Math.max(colW[layer.get(p.id)], trial(p, o.rot, o.mirror).extent.w);
+    const w = clusterOf.has(p.id) ? clusterSpan(clusters[clusterOf.get(p.id)]) : trial(p, o.rot, o.mirror).extent.w;
+    colW[layer.get(p.id)] = Math.max(colW[layer.get(p.id)], w);
   }
   // Wider gap where many nets have to cross between two columns, so the router
   // has a track per net instead of squeezing them into one corridor.
@@ -152,7 +183,8 @@ export function layoutCircuit(nl, circuit = {}) {
     if (ls.length < 2) continue;
     for (let b = Math.min(...ls) + 1; b <= Math.max(...ls); b++) crossings[b]++;
   }
-  const gapAt = (b) => Math.min(COL_GAP * 4, COL_GAP + Math.max(0, (crossings[b] || 0) - 2) * 20);
+  const extra = opts.extraGap || [];
+  const gapAt = (b) => Math.min(COL_GAP * 4, COL_GAP + Math.max(0, (crossings[b] || 0) - 2) * 20) + (extra[b] || 0);
   const colX = [0];
   for (let i = 1; i < nLayers; i++) colX[i] = colX[i - 1] + colW[i - 1] + gapAt(i);
   const cursor = new Array(nLayers).fill(0);
@@ -167,20 +199,27 @@ export function layoutCircuit(nl, circuit = {}) {
     for (const [k, b] of islandBottom) if (k < isl) top = Math.max(top, b + cfg.sectionGap);
     return top;
   };
+  // Busier parts need more room around them: every pin brings a wire that has
+  // to get out, so clearance grows with the square root of the pin count.
+  const clearance = (I) => CLEAR + Math.min(12, Math.max(0, 2 * Math.sqrt(I.part.sym.pinOrder.length) - 2.8));
   const isFree = (I, ignore) => {
-    const e = inflate(I.extent, CLEAR / 2);
-    return placed.every((o) => o === ignore || !overlaps(e, inflate(o.extent, CLEAR / 2)));
+    const e = inflate(I.extent, clearance(I) / 2);
+    return placed.every((o) => o === ignore || (Array.isArray(ignore) && ignore.includes(o)) || !overlaps(e, inflate(o.extent, clearance(o) / 2)));
   };
   const commit = (I) => {
     placed.push(I);
     inst.set(I.id, I);
     const L = layer.get(I.id);
     colRight[L] = Math.max(colRight[L], I.extent.x + I.extent.w);
+    const mine = new Set();
     for (const [pin, net] of Object.entries(I.part.pinNets)) {
-      if (isRailNet(net) || lines.has(net)) continue;
+      if (isRailNet(net)) continue;
+      // the part's driving pin owns the line even if one of its inputs shares the net
+      if (lines.has(net) && !(mine.has(net) && I.part.sym.pins[pin]?.io === 'out')) continue;
       const pp = I.pins[pin];
       const d = DIRS[pp.dir];
-      lines.set(net, { y: pp.y + (d.y ? d.y * 20 : 0), src: pp, order: lineOrder++ });
+      lines.set(net, { y: pp.y + (d.y ? d.y * 20 : 0), src: pp, order: lines.get(net)?.order ?? lineOrder++ });
+      mine.add(net);
     }
   };
   const at = (p, originX, originY, rot, mirror) => makeInstance(p, snap(originX, STEP), snap(originY, STEP), rot, mirror, nets, cfg);
@@ -197,7 +236,59 @@ export function layoutCircuit(nl, circuit = {}) {
   const order = parts.filter((p) => !inst.has(p.id))
     .sort((a, b) => islandOf.get(a.id) - islandOf.get(b.id) || wave.get(a.id) - wave.get(b.id) || group(a) - group(b) || layer.get(a.id) - layer.get(b.id));
 
+  // A bridge diamond is placed as one block: aligned to an already drawn corner
+  // net when there is one, then slid right/down until it is clear.
+  const placeCluster = (c, L, isl) => {
+    const make = (dx, dy) => c.members.map((m) => makeInstance(m.part, m.x + dx, m.y + dy, m.rot, false, nets, cfg));
+    const T = make(0, 0);
+    const left = Math.min(...T.map(coreLeft));
+    const top = Math.min(...T.map((I) => I.extent.y));
+    let best = null;
+    for (const I of T) {
+      for (const [pin, net] of Object.entries(I.part.pinNets)) {
+        if (!signal(net) || !lines.has(net)) continue;
+        const line = lines.get(net);
+        if (!best || line.order < best.line.order) best = { I, pin, line };
+      }
+    }
+    let dx = colStart(L) - left, dy;
+    if (best) {
+      const ap = best.I.pins[best.pin];
+      const horiz = ap.dir === 'left' || ap.dir === 'right';
+      dy = (horiz ? best.line.y : best.line.y - DIRS[ap.dir].y * 20) - ap.y;
+      const src = best.line.src;
+      if (src.dir === 'right') dx = Math.max(dx, src.x + 20 - ap.x);
+      if (src.dir === 'left') dx = Math.min(dx, src.x - 20 - ap.x);
+    } else {
+      dy = Math.max(cursor[L], islandTop(isl)) - top;
+    }
+    dx = snap(dx, STEP);
+    dy = snap(dy, STEP);
+    const steps = [[0, 0]];
+    for (let k = 1; k <= 40; k++) steps.push([20 * k, 0]);
+    for (let k = 1; k <= 40; k++) steps.push([0, 20 * k], [0, -20 * k]);
+    let chosen = null;
+    for (const [sx, sy] of steps) {
+      const set = make(dx + sx, dy + sy);
+      if (set.every((I) => isFree(I))) { chosen = set; break; }
+    }
+    if (!chosen) chosen = make(dx, snap(Math.max(0, ...placed.map((I) => I.extent.y + I.extent.h)) + 60 - top, STEP));
+    for (const I of chosen) commit(I);
+    const bottom = Math.max(...chosen.map((I) => I.extent.y + I.extent.h));
+    if (!best) cursor[L] = bottom + CLEAR + 20;
+    islandBottom.set(isl, Math.max(islandBottom.get(isl) ?? -Infinity, bottom));
+  };
+  const clusterDone = new Set();
+
   for (const p of order) {
+    if (clusterOf.has(p.id)) {
+      const k = clusterOf.get(p.id);
+      if (!clusterDone.has(k)) {
+        clusterDone.add(k);
+        placeCluster(clusters[k], layer.get(p.id), islandOf.get(p.id));
+      }
+      continue;
+    }
     const o = orient.get(p.id);
     const L = layer.get(p.id);
     const s = p.sym;
@@ -287,15 +378,18 @@ export function layoutCircuit(nl, circuit = {}) {
   }
 
   alignTerminals(parts, nets, inst, isFree, at, orient);
-  packIslands(inst, islandOf, at, cfg);
-  return { instances: inst, orient, layers: layer, islands: islandOf, config: cfg };
+  // moves are whole grid steps, so remake without re-snapping (diamond parts
+  // sit off-grid by design; only their pin tips are on the grid)
+  const remake = (I, dx, dy) => makeInstance(I.part, I.x + dx, I.y + dy, I.rot, I.mirror, nets, cfg);
+  packIslands(inst, islandOf, remake, cfg);
+  return { instances: inst, orient, layers: layer, islands: islandOf, config: cfg, bridges: clusters.length };
 }
 
 // Sub-circuits connected only through rails (a decoupling cap, a divider on the
 // supply) are laid out on their own. Flow them into rows so the sheet stays
 // compact instead of growing into one tall column. Parts the JSON positions
 // explicitly are never moved, and their sections act as fixed blocks.
-function packIslands(inst, islandOf, at, cfg) {
+function packIslands(inst, islandOf, remake, cfg) {
   const groups = new Map();
   for (const I of inst.values()) {
     const k = islandOf.get(I.id) ?? 0;
@@ -331,7 +425,7 @@ function packIslands(inst, islandOf, at, cfg) {
     const dy = Math.round((rowTop - isl.box.y) / cfg.grid) * cfg.grid;
     if (dx || dy) {
       // keep the orientation the placement actually chose (flex parts may have flipped)
-      for (const I of isl.list) Object.assign(I, at(I.part, I.x + dx, I.y + dy, I.rot, I.mirror));
+      for (const I of isl.list) Object.assign(I, remake(I, dx, dy));
     }
     cursorX += w + gap;
     rowHeight = Math.max(rowHeight, h);

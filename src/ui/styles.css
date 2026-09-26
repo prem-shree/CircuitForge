@@ -184,6 +184,8 @@ code { font-family: var(--mono); font-size: 12px; }
 .tb-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; flex: none; }
 .zoom-label { min-width: 48px; height: 28px; border: 0; background: none; border-radius: 6px; cursor: pointer; font: 12px var(--mono); color: var(--muted); }
 .zoom-label:hover { background: var(--hover); color: var(--text); }
+.tb-select { height: 28px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 12px; cursor: pointer; }
+.tb-select:hover { background: var(--hover); color: var(--text); }
 
 .inspector {
   position: absolute; top: 12px; right: 12px; width: 248px;

@@ -1,5 +1,7 @@
 import { parseCircuit, normalizeConnections, parseRef } from '../parser/index.js';
 import { canonicalType, resolveSymbol, resolvePin, listTypes, UNSUPPORTED_TYPES } from '../symbol-loader/index.js';
+import { normAngle } from '../utils/geometry.js';
+import { SPACING_PRESETS } from '../layout/config.js';
 
 function levenshtein(a, b) {
   const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
@@ -62,7 +64,11 @@ export function validateCircuit(input) {
   }
   if (circuit.layout && typeof circuit.layout === 'object') {
     for (const [k, v] of Object.entries(circuit.layout)) {
-      if (!['grid', 'componentGap', 'wireGap', 'labelGap', 'sectionGap', 'direction'].includes(k)) {
+      if (k === 'spacing') {
+        if (v !== 'auto' && !SPACING_PRESETS[v]) errors.push({ code: 'INVALID_PROPERTY', path: 'layout.spacing', message: `layout.spacing must be "auto", ${Object.keys(SPACING_PRESETS).map((p) => `"${p}"`).join(', ')}.` });
+      } else if (k === 'bridges' || k === 'optimize') {
+        if (typeof v !== 'boolean') errors.push({ code: 'INVALID_PROPERTY', path: `layout.${k}`, message: `layout.${k} must be true or false.` });
+      } else if (!['grid', 'componentGap', 'wireGap', 'labelGap', 'sectionGap', 'direction'].includes(k)) {
         warnings.push({ code: 'UNKNOWN_FIELD', path: `layout.${k}`, message: `Unknown layout option "${k}".` });
       } else if (k !== 'direction' && v !== undefined && !Number.isFinite(v)) {
         errors.push({ code: 'INVALID_PROPERTY', path: `layout.${k}`, message: `layout.${k} must be a number.` });
@@ -120,8 +126,21 @@ export function validateCircuit(input) {
       comps.set(id, null);
       return;
     }
-    if (c.rotation !== undefined && ![0, 90, 180, 270].includes(c.rotation)) {
-      errors.push({ code: 'INVALID_PROPERTY', component: id, path: `${path}.rotation`, message: `Rotation of ${id} must be 0, 90, 180 or 270.` });
+    // Rotation: any angle in degrees, clockwise ("angle" is accepted as an alias).
+    let comp = c;
+    const turns = [['rotation', c.rotation], ['angle', c.angle]].filter(([, v]) => v !== undefined);
+    for (const [key, v] of turns) {
+      if (typeof v !== 'number' || !Number.isFinite(v)) {
+        errors.push({ code: 'INVALID_PROPERTY', component: id, path: `${path}.${key}`, message: `${key === 'angle' ? 'Angle' : 'Rotation'} of ${id} must be a number of degrees, e.g. 0, 45, 90.` });
+      }
+    }
+    if (turns.length === 2 && typeof c.rotation === 'number' && typeof c.angle === 'number' && normAngle(c.rotation) !== normAngle(c.angle)) {
+      errors.push({ code: 'INVALID_PROPERTY', component: id, path: `${path}.angle`, message: `${id} has both "rotation" (${c.rotation}) and "angle" (${c.angle}); use one.` });
+    }
+    const turn = turns.find(([, v]) => typeof v === 'number' && Number.isFinite(v));
+    if (turn) {
+      comp = { ...c, rotation: normAngle(turn[1]) };
+      delete comp.angle;
     }
     if (c.position !== undefined && !(c.position && Number.isFinite(c.position.x) && Number.isFinite(c.position.y))) {
       errors.push({ code: 'INVALID_PROPERTY', component: id, path: `${path}.position`, message: `Position of ${id} must be {"x": number, "y": number}.` });
@@ -142,7 +161,7 @@ export function validateCircuit(input) {
         }
       }
     }
-    comps.set(id, { comp: c, sym: resolveSymbol(c) });
+    comps.set(id, { comp, sym: resolveSymbol(comp) });
   });
 
   const connections = [];

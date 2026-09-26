@@ -9,7 +9,8 @@
 // 4-way junctions (allowed at a cost). If a net can't be routed strictly, a relaxed pass allows
 // violations at high cost; failing that, an L-shaped fallback is drawn and a
 // ROUTING_FAILURE warning is raised.
-import { GRID, DIRS, OPPOSITE, unionRect, inflate, segHitsRect } from '../utils/geometry.js';
+import { GRID, DIRS, OPPOSITE, unionRect, boundsOf, pointInPoly, segHitsPoly, distToSeg } from '../utils/geometry.js';
+import { bodyPoly } from '../layout/instance.js';
 
 const DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
 const DIR_INDEX = { right: 0, down: 1, left: 2, up: 3 };
@@ -38,7 +39,9 @@ export function routeCircuit(nl, instances) {
   const blocked = new Uint8Array(N);
   const soft = new Float32Array(N);
   const pinOwner = new Int32Array(N).fill(-1); // routed net index, or -2 for "no one"
-  const pinEntry = new Int8Array(N).fill(-1);
+  // Bitmask of the moves a wire may use to arrive at a pin: from the outward
+  // side only. Several pins can share a point (a bridge corner), so masks OR.
+  const pinEntry = new Uint8Array(N);
   // The cell straight in front of a pin is that pin's escape track: no other net
   // may take it, otherwise the pin can end up unreachable and route badly.
   const approach = new Int32Array(N).fill(-1);
@@ -50,6 +53,18 @@ export function routeCircuit(nl, instances) {
     for (let j = Math.max(0, ay); j <= Math.min(H - 1, by); j++)
       for (let i = Math.max(0, ax); i <= Math.min(W - 1, bx); i++) fn(j * W + i);
   };
+  // cells whose centres lie inside a (rotated) outline
+  const fillPoly = (poly, fn) => fillRect(boundsOf(poly), (c) => { if (pointInPoly({ x: cx(c), y: cy(c) }, poly)) fn(c); });
+  // cells a lead passes through (within 4.5px of it), apart from the pin tip
+  const fillLead = (pts, tipCell, fn) => {
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i], b = pts[i + 1];
+      const box = boundsOf([a, b]);
+      fillRect({ x: box.x - GRID, y: box.y - GRID, w: box.w + 2 * GRID, h: box.h + 2 * GRID }, (c) => {
+        if (c !== tipCell && distToSeg({ x: cx(c), y: cy(c) }, a, b) < 4.5) fn(c);
+      });
+    }
+  };
 
   // ---- routed nets
   const routed = [];
@@ -58,49 +73,54 @@ export function routeCircuit(nl, instances) {
     if (net.rail) continue;
     const pins = net.pins.filter((e) => instances.has(e.comp)).map((e) => {
       const p = instances.get(e.comp).pins[e.pin];
-      return { ...e, x: p.x, y: p.y, dir: p.dir, cell: cellOf(p.x, p.y) };
+      return { ...e, x: p.x, y: p.y, dir: p.dir, exits: p.exits || [p.dir], cell: cellOf(p.x, p.y) };
     });
     if (pins.length < 2) continue;
     netIndex.set(id, routed.length);
     routed.push({ id, pins });
   }
 
-  // ---- obstacles
+  // ---- obstacles (the real, possibly rotated, outline of each part)
+  const approachWanted = [];
   for (const I of insts) {
-    const body = inflate(I.body, 3);
-    fillRect(body, (c) => { blocked[c] = 1; });
-    fillRect(inflate(I.body, 11), (c) => { soft[c] += 0.6; });
-    for (const l of I.labels) fillRect(inflate(l.box, 2), (c) => { soft[c] += 6; });
+    fillPoly(bodyPoly(I, 3), (c) => { blocked[c] = 1; });
+    fillPoly(bodyPoly(I, 11), (c) => { soft[c] += 0.6; });
+    // keep wires off the text: the labels already chosen for this part if any
+    for (const l of I.labelsFinal || I.labels) fillRect({ x: l.box.x - 2, y: l.box.y - 2, w: l.box.w + 4, h: l.box.h + 4 }, (c) => { soft[c] += 6; });
     for (const [name, p] of Object.entries(I.pins)) {
       const c = cellOf(p.x, p.y);
       if (c < 0) continue;
       const net = I.part.pinNets[name];
       const ni = netIndex.has(net) ? netIndex.get(net) : -2;
-      // lead cells between the pin tip and the body
-      const d = DIRS[p.dir];
-      for (let k = 1; k <= 6; k++) {
-        const lx = p.x - d.x * GRID * k, ly = p.y - d.y * GRID * k;
-        const lc = cellOf(lx, ly);
-        if (lc < 0) break;
-        blocked[lc] = 1;
-        if (lx >= body.x && lx <= body.x + body.w && ly >= body.y && ly <= body.y + body.h) break;
-      }
+      // the lead from the tip back into the body, including any extension
+      const leadPts = [{ x: p.x, y: p.y }, ...(p.ext ? [p.ext[0]] : []), p.inner];
+      fillLead(leadPts, c, (lc) => { blocked[lc] = 1; });
       blocked[c] = 1;
-      pinOwner[c] = ni;
-      pinEntry[c] = DIR_INDEX[OPPOSITE[p.dir]];
-      const ac = cellOf(p.x + d.x * GRID, p.y + d.y * GRID);
-      if (ac >= 0 && approach[ac] === -1 && pinOwner[ac] === -1) approach[ac] = ni;
+      if (pinOwner[c] === -1 || pinOwner[c] === ni) {
+        pinOwner[c] = ni;
+        for (const e of p.exits || [p.dir]) pinEntry[c] |= 1 << DIR_INDEX[OPPOSITE[e]];
+      }
+      for (const e of p.exits || [p.dir]) approachWanted.push([cellOf(p.x + DIRS[e].x * GRID, p.y + DIRS[e].y * GRID), ni]);
     }
     for (const m of I.markers) {
-      fillRect(inflate(m.bbox, 3), (c) => { if (pinOwner[c] === -1) blocked[c] = 1; });
+      fillRect({ x: m.bbox.x - 3, y: m.bbox.y - 3, w: m.bbox.w + 6, h: m.bbox.h + 6 }, (c) => { if (pinOwner[c] === -1) blocked[c] = 1; });
     }
+  }
+  for (const [ac, ni] of approachWanted) {
+    if (ac >= 0 && approach[ac] === -1 && pinOwner[ac] === -1 && !blocked[ac]) approach[ac] = ni;
   }
 
   // ---- per-net state
-  const bits = routed.map(() => new Map()); // cell -> connectivity bits
+  const bits = routed.map(() => new Map()); // cell -> connectivity bits (leads + wires)
+  const wireBits = routed.map(() => new Map()); // cell -> bits from wires only
+  const pinsAt = routed.map(() => new Map()); // cell -> number of pins
   const addBit = (ni, c, b) => bits[ni].set(c, (bits[ni].get(c) || 0) | b);
   routed.forEach((net, ni) => {
-    for (const p of net.pins) if (p.cell >= 0) addBit(ni, p.cell, BIT[DIR_INDEX[OPPOSITE[p.dir]]]);
+    for (const p of net.pins) {
+      if (p.cell < 0) continue;
+      pinsAt[ni].set(p.cell, (pinsAt[ni].get(p.cell) || 0) + 1);
+      if (p.exits.length === 1) addBit(ni, p.cell, BIT[DIR_INDEX[OPPOSITE[p.dir]]]);
+    }
   });
 
   // ---- A*
@@ -177,7 +197,7 @@ export function routeCircuit(nl, instances) {
         if (approach[n] !== -1 && approach[n] !== ni) { if (!relaxed) continue; cost += VIOLATION; }
         const owner = pinOwner[n];
         if (owner !== -1) {
-          if (owner !== ni || nd !== pinEntry[n]) { if (!relaxed || owner === ni) continue; cost += VIOLATION * 2; }
+          if (owner !== ni || !(pinEntry[n] & (1 << nd))) { if (!relaxed || owner === ni) continue; cost += VIOLATION * 2; }
         } else if (blocked[n]) {
           if (!relaxed) continue;
           cost += VIOLATION * 2;
@@ -214,6 +234,8 @@ export function routeCircuit(nl, instances) {
       const d = horiz ? (b > a ? 0 : 2) : (b > a ? 1 : 3);
       addBit(ni, a, BIT[d]);
       addBit(ni, b, BIT[(d + 2) & 3]);
+      wireBits[ni].set(a, (wireBits[ni].get(a) || 0) | BIT[d]);
+      wireBits[ni].set(b, (wireBits[ni].get(b) || 0) | BIT[(d + 2) & 3]);
     }
   };
 
@@ -258,7 +280,7 @@ export function routeCircuit(nl, instances) {
         for (let i = 0; i + 1 < stops.length; i++) {
           const from = stops[i], to = stops[i + 1];
           if (from === to) continue;
-          const startDirs = i === 0 ? [DIR_INDEX[a.dir]] : [0, 1, 2, 3];
+          const startDirs = i === 0 ? a.exits.map((e) => DIR_INDEX[e]) : [0, 1, 2, 3];
           const target = new Set([to]);
           let end = search(ni, from, startDirs, target, false);
           if (end < 0) end = search(ni, from, startDirs, target, true);
@@ -294,7 +316,7 @@ export function routeCircuit(nl, instances) {
       });
       const p = todo.splice(bi, 1)[0];
       if (tree.has(p.cell)) continue;
-      const sd = [DIR_INDEX[p.dir]];
+      const sd = p.exits.map((e) => DIR_INDEX[e]);
       let end = search(ni, p.cell, sd, tree, false);
       if (end < 0) end = search(ni, p.cell, sd, tree, true);
       let cells;
@@ -316,9 +338,14 @@ export function routeCircuit(nl, instances) {
   // ---- results
   const nets = new Map();
   routed.forEach((net, ni) => nets.set(net.id, { id: net.id, paths: paths[ni].map(simplify), segments: toSegments(paths[ni]) }));
+  // A junction is any point where three or more things of one net meet: wire
+  // directions plus pins (two parts touching at a corner count as two).
   const junctions = [];
   routed.forEach((net, ni) => {
-    for (const [c, b] of bits[ni]) if (popcount(b) >= 3) junctions.push({ x: cx(c), y: cy(c), net: net.id });
+    const cells = new Set([...wireBits[ni].keys(), ...pinsAt[ni].keys()]);
+    for (const c of cells) {
+      if (popcount(wireBits[ni].get(c) || 0) + (pinsAt[ni].get(c) || 0) >= 3) junctions.push({ x: cx(c), y: cy(c), net: net.id });
+    }
   });
   const crossings = [];
   for (let c = 0; c < N; c++) {
@@ -329,10 +356,14 @@ export function routeCircuit(nl, instances) {
   // A relaxed route may have cut through a body or another net: report it.
   // ponytail: O(segments x parts) scan; fine at schematic scale.
   const violations = [];
+  const shrunk = insts.map((I) => [I, bodyPoly(I, -1.5)]);
   for (const [id, net] of nets) {
     for (const seg of net.segments) {
-      for (const I of insts) {
-        if (segHitsRect(seg, inflate(I.body, -1.5))) { violations.push({ code: 'WIRE_THROUGH_COMPONENT', net: id, comp: I.id }); break; }
+      for (const [I, poly] of shrunk) {
+        if (segHitsPoly(seg, poly)) {
+          violations.push({ code: 'WIRE_THROUGH_COMPONENT', net: id, comp: I.id, x: I.body.x + I.body.w / 2, y: I.body.y + I.body.h / 2 });
+          break;
+        }
       }
     }
   }
@@ -344,7 +375,7 @@ export function routeCircuit(nl, instances) {
         Math.min(Math.max(a.x1, a.x2), Math.max(b.x1, b.x2)) > Math.max(Math.min(a.x1, a.x2), Math.min(b.x1, b.x2)))
       || (a.x1 === a.x2 && b.x1 === b.x2 && a.x1 === b.x1 &&
         Math.min(Math.max(a.y1, a.y2), Math.max(b.y1, b.y2)) > Math.max(Math.min(a.y1, a.y2), Math.min(b.y1, b.y2)));
-    if (overlap) violations.push({ code: 'WIRE_OVERLAP', net: a.net, other: b.net });
+    if (overlap) violations.push({ code: 'WIRE_OVERLAP', net: a.net, other: b.net, x: (Math.max(Math.min(a.x1, a.x2), Math.min(b.x1, b.x2)) + Math.min(Math.max(a.x1, a.x2), Math.max(b.x1, b.x2))) / 2, y: (a.y1 + b.y2) / 2 });
   }
   return { nets, junctions, crossings, failures, violations };
 }

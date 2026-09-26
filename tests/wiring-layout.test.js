@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { buildScene, render, validate } from '../src/engine.js';
-import { DEFAULT_LAYOUT } from '../src/layout/config.js';
+import { autoSpacing } from '../src/layout/config.js';
 import { overlaps, inflate, segHitsRect } from '../src/utils/geometry.js';
 
 const EX = new URL('../examples/', import.meta.url);
@@ -142,7 +142,8 @@ test('layout honours the configured spacing', () => {
     assert.ok(I.x % 20 === 0 && I.y % 20 === 0, `${I.id} sits on the 20px grid`);
   }
   // defaults survive a partial layout block
-  assert.equal(tight.layout.wireGap, DEFAULT_LAYOUT.wireGap);
+  // values the circuit leaves out come from the automatic preset for its size
+  assert.equal(tight.layout.wireGap, autoSpacing({ parts: tight.instances.size }).wireGap);
 });
 
 test('no part overlaps another and no label sits on a wire', () => {

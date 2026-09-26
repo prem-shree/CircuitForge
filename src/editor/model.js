@@ -2,6 +2,7 @@
 // the JSON stays the single source of truth.
 import { parseRef } from '../parser/index.js';
 import { resolveSymbol } from '../symbol-loader/index.js';
+import { normAngle } from '../utils/geometry.js';
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
@@ -93,18 +94,29 @@ export function pinLayout(circuit, instances, moves = {}) {
     const I = instances.get(comp.id);
     if (!I) continue;
     const m = moves[comp.id];
-    comp.position = { x: m ? m.x : I.x, y: m ? m.y : I.y };
+    const r2 = (v) => Math.round(v * 100) / 100;
+    comp.position = { x: m ? m.x : r2(I.x), y: m ? m.y : r2(I.y) };
     comp.rotation = I.rot;
+    delete comp.angle;
     if (I.mirror) comp.mirror = true; else delete comp.mirror;
   }
   return c;
 }
 
-export function rotateComponent(circuit, instances, id) {
+export function rotateComponent(circuit, instances, id, step = 90) {
   const I = instances.get(id);
   const c = pinLayout(circuit, instances);
   const comp = c.components.find((x) => x.id === id);
-  if (comp && I) comp.rotation = (I.rot + 90) % 360;
+  if (comp && I) comp.rotation = normAngle(I.rot + step);
+  return c;
+}
+
+// Pick a spacing preset ("" = automatic, by circuit size).
+export function setSpacing(circuit, spacing) {
+  const c = clone(circuit);
+  const layout = { ...c.layout, spacing: spacing || undefined };
+  if (!spacing) delete layout.spacing;
+  if (Object.keys(layout).length) c.layout = layout; else delete c.layout;
   return c;
 }
 

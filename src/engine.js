@@ -8,9 +8,7 @@
 import { validateCircuit } from './validator/index.js';
 import { checkElectrical } from './validator/electrical.js';
 import { buildNetlist } from './graph/index.js';
-import { layoutCircuit } from './layout/index.js';
-import { routeCircuit } from './router/index.js';
-import { placeLabels } from './layout/labels.js';
+import { planLayout } from './layout/optimize.js';
 import { renderSVG } from './renderer/index.js';
 
 const hasDesignError = (findings) => findings.some((f) => f.severity === 'error');
@@ -32,26 +30,20 @@ export function buildScene(input, v = validateCircuit(input)) {
   if (!v.valid) return { v, scene: null };
   const warnings = v.warnings;
   const nl = buildNetlist(v);
-  let placement;
+  // layout, label placement and routing run together: the spacing optimizer
+  // scores each routed attempt and keeps the best one
+  let plan;
   try {
-    placement = layoutCircuit(nl, v.circuit);
+    plan = planLayout(nl, v.circuit);
   } catch (e) {
     v.errors.push({ code: 'LAYOUT_FAILURE', message: `Layout failed: ${e.message}` });
     v.valid = false;
     return { v, scene: null };
   }
-  let routing;
-  try {
-    routing = routeCircuit(nl, placement.instances);
-  } catch (e) {
-    v.errors.push({ code: 'ROUTING_FAILURE', message: `Routing failed: ${e.message}` });
-    v.valid = false;
-    return { v, scene: null };
-  }
+  const { placement, routing } = plan;
   for (const f of routing.failures) {
     warnings.push({ code: 'ROUTING_FAILURE', component: f.comp, pin: f.pin, message: `Could not find a clean route to ${f.comp}.${f.pin}; drew a direct wire instead.` });
   }
-  placeLabels(placement.instances, routing);
   let findings = [];
   try {
     findings = checkElectrical({ circuit: v.circuit, netlist: nl, routing });
@@ -68,6 +60,7 @@ export function buildScene(input, v = validateCircuit(input)) {
       routing,
       findings,
       layout: placement.config,
+      layoutInfo: plan.metrics,
     },
   };
 }

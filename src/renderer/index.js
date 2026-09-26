@@ -1,5 +1,5 @@
 // Scene -> standalone, portable SVG string (no external CSS, no <use>).
-import { unionRect, boundsOf } from '../utils/geometry.js';
+import { unionRect, boundsOf, overlaps, segHitsRect, textWidth } from '../utils/geometry.js';
 
 export const THEMES = {
   light: { ink: '#1b1b1f', wire: '#1b1b1f', muted: '#55565c', junction: '#1b1b1f', background: '#ffffff' },
@@ -22,7 +22,8 @@ export function sceneBounds(scene) {
     for (const s of net.segments) b = unionRect(b, boundsOf([{ x: s.x1, y: s.y1 }, { x: s.x2, y: s.y2 }]));
   // annotations and measurement markers sit outside the wiring
   const c = scene.circuit || {};
-  for (const m of [...(Array.isArray(c.measurements) ? c.measurements : []), ...(Array.isArray(c.annotations) ? c.annotations : [])]) {
+  for (const p of placeMeasurements(scene)) b = unionRect(b, unionRect(p.box, { x: p.at.x - 7, y: p.at.y - 7, w: 14, h: 14 }));
+  for (const m of Array.isArray(c.annotations) ? c.annotations : []) {
     const at = anchorOf(scene, m.at ?? m.position ?? m);
     if (!at) continue;
     const dx = Number.isFinite(m.dx) ? m.dx : 0, dy = Number.isFinite(m.dy) ? m.dy : -22;
@@ -58,6 +59,12 @@ export function renderSVG(scene, opts = {}) {
     const d = net.paths.map((p) => pathD(p, hops)).join('');
     if (d) out.push(`<path data-net="${esc(net.id)}" d="${d}"/>`);
   }
+  // Lead extensions: angled parts reach their grid-aligned pin tips here.
+  const ext = [];
+  for (const I of scene.instances.values()) {
+    for (const p of Object.values(I.pins)) if (p.ext) ext.push(`M${n(p.ext[0].x)} ${n(p.ext[0].y)}L${n(p.ext[1].x)} ${n(p.ext[1].y)}`);
+  }
+  if (ext.length) out.push(`<path class="cf-leads" stroke-linecap="round" d="${ext.join('')}"/>`);
   out.push('</g>');
 
   // components
@@ -114,45 +121,88 @@ export function renderSVG(scene, opts = {}) {
 
 // Resolve where a measurement/annotation points: explicit point, a component,
 // a component pin, or anywhere on a net's wiring.
-function anchorOf(scene, spec) {
-  if (!spec) return null;
-  if (Number.isFinite(spec.x) && Number.isFinite(spec.y)) return { x: spec.x, y: spec.y };
+const anchorOf = (scene, spec) => anchorsOf(scene, spec)[0] || null;
+
+// Every place the spec could point at; a net offers the middle of its
+// middle wire segment first, then every grid point along its wiring.
+function anchorsOf(scene, spec) {
+  const one = (p) => (p ? [p] : []);
+  if (!spec) return [];
+  if (Number.isFinite(spec.x) && Number.isFinite(spec.y)) return [{ x: spec.x, y: spec.y }];
   const ref = typeof spec === 'string' ? spec : (spec.at ?? spec.component ?? spec.pin ?? spec.net ?? spec.target);
-  if (Number.isFinite(ref?.x) && Number.isFinite(ref?.y)) return { x: ref.x, y: ref.y };
+  if (Number.isFinite(ref?.x) && Number.isFinite(ref?.y)) return [{ x: ref.x, y: ref.y }];
   if (typeof ref === 'string') {
     const [id, pin] = ref.split('.');
     const I = scene.instances.get(id);
     if (I) {
-      if (pin && I.pins[pin]) return { ...I.pins[pin] };
-      return { x: I.body.x + I.body.w / 2, y: I.body.y - 10 };
+      if (pin && I.pins[pin]) return [{ ...I.pins[pin] }];
+      return [{ x: I.body.x + I.body.w / 2, y: I.body.y - 10 }];
     }
-    // net by id or name
     for (const [nid, net] of scene.netlist.nets) {
       if (nid !== ref && net.name !== ref) continue;
-      const wires = scene.routing.nets.get(nid);
-      const seg = wires?.segments?.[Math.floor((wires.segments.length - 1) / 2)];
-      if (seg) return { x: (seg.x1 + seg.x2) / 2, y: (seg.y1 + seg.y2) / 2 };
+      const segs = scene.routing.nets.get(nid)?.segments || [];
+      if (segs.length) {
+        const mid = segs[Math.floor((segs.length - 1) / 2)];
+        const c = { x: (mid.x1 + mid.x2) / 2, y: (mid.y1 + mid.y2) / 2 };
+        const pts = [];
+        for (const sg of segs) {
+          const len = Math.abs(sg.x2 - sg.x1) + Math.abs(sg.y2 - sg.y1);
+          for (let d = 10; d < len; d += 10) pts.push({ x: sg.x1 + Math.sign(sg.x2 - sg.x1) * d, y: sg.y1 + Math.sign(sg.y2 - sg.y1) * d });
+        }
+        return [c, ...pts.sort((p, q) => Math.hypot(p.x - c.x, p.y - c.y) - Math.hypot(q.x - c.x, q.y - c.y))];
+      }
       const e = net.pins[0];
       const I2 = e && scene.instances.get(e.comp);
-      if (I2) return { ...I2.pins[e.pin] };
+      return one(I2 && { ...I2.pins[e.pin] });
     }
   }
-  return null;
+  return [];
+}
+
+// Measurement probes: try each anchor with the text at each corner,
+// keeping the spot that collides least with parts, markers,
+// labels, wires and earlier probes.
+export function placeMeasurements(scene) {
+  const list = Array.isArray(scene.circuit?.measurements) ? scene.circuit.measurements : [];
+  if (!list.length) return [];
+  const insts = [...scene.instances.values()];
+  const boxes = insts.flatMap((I) => [I.body, ...I.markers.map((m) => m.bbox), ...(I.labelsFinal || I.labels).map((l) => l.box)]);
+  const segs = [...scene.routing.nets.values()].flatMap((n) => n.segments);
+  const out = [];
+  for (const m of list) {
+    const kind = String(m.type || m.quantity || 'voltage').toLowerCase();
+    const label = [m.label ?? m.name ?? '', m.expected != null ? `${m.expected}` : ''].filter(Boolean).join(' = ');
+    const w = textWidth(label, 10);
+    let best = null;
+    const spots = anchorsOf(scene, m);
+    for (const at of spots) {
+      for (const [dx, dy, anchor] of [[10, -8, 'start'], [10, 18, 'start'], [-10, -8, 'end'], [-10, 18, 'end']]) {
+        const tx = at.x + dx, ty = at.y + dy;
+        const box = { x: anchor === 'end' ? tx - w : tx, y: ty - 9, w: label ? w : 0, h: label ? 12 : 0 };
+        // prefer the middle of the net and text above-right
+        let score = Math.hypot(at.x - spots[0].x, at.y - spots[0].y) * 0.002 + (anchor === 'start' && dy < 0 ? 0 : 0.5);
+        if (label) {
+          for (const r of boxes) if (overlaps(box, r)) score += 3;
+          for (const sg of segs) if (segHitsRect(sg, box)) score += 2;
+        }
+        for (const p of out) if (overlaps(box, p.box) || Math.hypot(p.at.x - at.x, p.at.y - at.y) < 16) score += 3;
+        if (!best || score < best.score) best = { at, tx, ty, anchor, box, score, kind, label };
+      }
+    }
+    if (best) out.push(best);
+  }
+  return out;
 }
 
 function renderExtras(scene, th) {
   const c = scene.circuit || {};
   const items = [];
-  for (const m of Array.isArray(c.measurements) ? c.measurements : []) {
-    const at = anchorOf(scene, m);
-    if (!at) continue;
-    const kind = String(m.type || m.quantity || 'voltage').toLowerCase();
+  for (const { at, tx, ty, anchor, kind, label } of placeMeasurements(scene)) {
     const letter = kind.startsWith('c') ? 'A' : kind.startsWith('r') ? 'Ω' : 'V';
-    const label = [m.label ?? m.name ?? '', m.expected != null ? `${m.expected}` : ''].filter(Boolean).join(' = ');
     items.push(`<g class="cf-measurement" data-kind="${esc(kind)}">`
       + `<circle cx="${n(at.x)}" cy="${n(at.y)}" r="6.5" fill="none" stroke="${th.ink}" stroke-width="1.2" stroke-dasharray="3 2"/>`
       + `<text x="${n(at.x)}" y="${n(at.y) + 3}" font-size="7.5" text-anchor="middle" fill="${th.ink}" stroke="none">${letter}</text>`
-      + (label ? `<text x="${n(at.x + 10)}" y="${n(at.y - 8)}" font-size="10" fill="${th.muted}" stroke="none">${esc(label)}</text>` : '')
+      + (label ? `<text x="${n(tx)}" y="${n(ty)}" font-size="10"${anchor === 'end' ? ' text-anchor="end"' : ''} fill="${th.muted}" stroke="none">${esc(label)}</text>` : '')
       + '</g>');
   }
   for (const a of Array.isArray(c.annotations) ? c.annotations : []) {

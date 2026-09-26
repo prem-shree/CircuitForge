@@ -86,9 +86,10 @@
         <button class="icon-btn" data-tool="undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
         <button class="icon-btn" data-tool="redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
         <span class="tb-sep"></span>
-        <button class="icon-btn" data-tool="rotate" title="Rotate selected (R)"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
+        <button class="icon-btn" data-tool="rotate" title="Rotate selected 90° (R) · Shift: 45°"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
         <button class="icon-btn" data-tool="delete" title="Delete selected (Del)"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button>
         <button class="icon-btn" data-tool="autolayout" title="Auto layout (clear manual positions)"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><path d="M10 6.5h4.5a2 2 0 0 1 2 2V14"/></svg></button>
+        <select class="tb-select" id="spacing" title="Spacing between parts" aria-label="Spacing"><option value="">Auto spacing</option><option value="compact">Compact</option><option value="normal">Normal</option><option value="comfortable">Comfortable</option><option value="spacious">Spacious</option></select>
         <span class="tb-sep"></span>
         <button class="icon-btn toggle" data-tool="grid" title="Grid (G)" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
         <button class="icon-btn toggle" data-tool="snap" title="Snap to 20px grid (S)" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M6 3v8a6 6 0 0 0 12 0V3"/><path d="M6 7h4M14 7h4"/></svg></button>
@@ -107,13 +108,14 @@
           <label>Value<input name="value" placeholder="e.g. 10kΩ"></label>
           <label>Label<input name="label" placeholder="optional display name"></label>
           <div class="row">
-            <label>Rotation<select name="rotation"><option value="">auto</option><option>0</option><option>90</option><option>180</option><option>270</option></select></label>
+            <label>Rotation °<input name="rotation" type="number" step="any" list="angles" placeholder="auto" title="Degrees clockwise, any angle"></label>
+            <datalist id="angles"><option>0</option><option>45</option><option>90</option><option>135</option><option>180</option><option>225</option><option>270</option><option>315</option></datalist>
             <label class="check"><input type="checkbox" name="mirror"> Mirror</label>
           </div>
           <div class="pins" id="inspector-pins"></div>
           <div class="edu" id="inspector-edu" hidden></div>
           <div class="row actions">
-            <button type="button" class="btn btn-sm" data-tool="rotate">Rotate</button>
+            <button type="button" class="btn btn-sm" data-tool="rotate" title="90° · Shift-click: 45°">Rotate</button>
             <button type="button" class="btn btn-sm btn-danger" data-tool="delete">Delete</button>
           </div>
         </form>
