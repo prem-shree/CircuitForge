@@ -1,0 +1,92 @@
+{
+  "title": "Full-Wave Bridge Rectifier",
+  "education": {
+    "summary": "Four diodes steer both halves of the AC waveform through the load in the same direction; the capacitor smooths the result.",
+    "objectives": [
+      "Trace the current path for each half-cycle",
+      "Explain why two diode drops are lost",
+      "Compare ripple with the half-wave rectifier"
+    ],
+    "theory": "On each half-cycle one diagonal pair conducts, so the load sees current every half-cycle: Vpeak ≈ Vac·√2 − 2·Vf and the ripple frequency is twice the mains frequency.",
+    "questions": [
+      "Which diodes conduct while V1.positive is above V1.negative?",
+      "What is the ripple frequency for a 50 Hz input?",
+      "What happens if one diode fails open?"
+    ]
+  },
+  "components": [
+    {
+      "id": "V1",
+      "type": "ac_source",
+      "value": "12V 50Hz"
+    },
+    {
+      "id": "D1",
+      "type": "diode",
+      "value": "1N4007"
+    },
+    {
+      "id": "D2",
+      "type": "diode",
+      "value": "1N4007"
+    },
+    {
+      "id": "D3",
+      "type": "diode",
+      "value": "1N4007"
+    },
+    {
+      "id": "D4",
+      "type": "diode",
+      "value": "1N4007"
+    },
+    {
+      "id": "C1",
+      "type": "capacitor_polarized",
+      "value": "1000µF"
+    },
+    {
+      "id": "RL",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    {
+      "net": "AC1",
+      "pins": [
+        "V1.positive",
+        "D1.anode",
+        "D3.cathode"
+      ]
+    },
+    {
+      "net": "AC2",
+      "pins": [
+        "V1.negative",
+        "D2.anode",
+        "D4.cathode"
+      ]
+    },
+    {
+      "net": "DC+",
+      "pins": [
+        "D1.cathode",
+        "D2.cathode",
+        "C1.positive",
+        "RL.1"
+      ]
+    },
+    [
+      "D3.anode",
+      "D4.anode",
+      "C1.negative",
+      "RL.2",
+      "GND"
+    ]
+  ]
+}

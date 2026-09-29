@@ -5,43 +5,135 @@
     "summary": "The counter outputs a binary number, the decoder converts it into the seven segment patterns, and the display shows the digit.",
     "objectives": [
       "Match each segment output of the decoder to the display pin",
-      "Size the segment resistors from the supply and LED current",
+      "Explain why a shared common-cathode resistor limits the display current",
       "Explain what the lamp-test and blanking inputs do"
     ],
-    "questions": ["Which segments light for the count 7?", "What value should the 330 Ω resistors be for 10 mA per segment at 5 V?"]
+    "questions": [
+      "Which segments light for the count 7?",
+      "What value of R1 gives about 5 mA per lit segment for a 5 V supply?",
+      "Why does the display get dimmer when more segments are lit through one shared resistor?"
+    ]
   },
   "components": [
-    { "id": "CLK", "type": "input", "label": "CLK", "section": "input" },
-    { "id": "U1", "type": "counter", "value": "74HC161" },
-    { "id": "U2", "type": "bcd_7seg_decoder", "value": "CD4511" },
-    { "id": "DS1", "type": "seven_segment" },
-    { "id": "RA", "type": "resistor", "value": "330Ω" },
-    { "id": "RB", "type": "resistor", "value": "330Ω" },
-    { "id": "VCC", "type": "vcc", "value": "+5V" },
-    { "id": "GND", "type": "ground" }
+    {
+      "id": "CLK",
+      "type": "input",
+      "label": "CLK",
+      "section": "input"
+    },
+    {
+      "id": "U1",
+      "type": "counter",
+      "value": "74HC161"
+    },
+    {
+      "id": "U2",
+      "type": "bcd_7seg_decoder",
+      "value": "CD4511"
+    },
+    {
+      "id": "DS1",
+      "type": "seven_segment"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "150Ω"
+    },
+    {
+      "id": "VCC",
+      "type": "vcc",
+      "value": "+5V"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
   ],
   "connections": [
-    ["CLK", "U1.CLK"],
-    ["U1.~CLR", "VCC"],
-    ["U1.EN", "VCC"],
-    ["U1.Q0", "U2.A"],
-    ["U1.Q1", "U2.B"],
-    ["U1.Q2", "U2.C"],
-    ["U1.Q3", "U2.D"],
-    ["U2.~LT", "VCC"],
-    ["U2.~BI", "VCC"],
-    ["U2.VCC", "VCC"],
-    ["U2.GND", "GND"],
-    ["U2.OA", "RA.1"],
-    ["RA.2", "DS1.a"],
-    ["U2.OB", "RB.1"],
-    ["RB.2", "DS1.b"],
-    ["U2.OC", "DS1.c"],
-    ["U2.OD", "DS1.d"],
-    ["U2.OE", "DS1.e"],
-    ["U2.OF", "DS1.f"],
-    ["U2.OG", "DS1.g"],
-    ["DS1.dp", "GND"],
-    ["DS1.COM", "GND"]
+    [
+      "CLK",
+      "U1.CLK"
+    ],
+    [
+      "U1.~CLR",
+      "VCC"
+    ],
+    [
+      "U1.EN",
+      "VCC"
+    ],
+    [
+      "U1.Q0",
+      "U2.A"
+    ],
+    [
+      "U1.Q1",
+      "U2.B"
+    ],
+    [
+      "U1.Q2",
+      "U2.C"
+    ],
+    [
+      "U1.Q3",
+      "U2.D"
+    ],
+    [
+      "U2.~LT",
+      "VCC"
+    ],
+    [
+      "U2.~BI",
+      "VCC"
+    ],
+    [
+      "U2.VCC",
+      "VCC"
+    ],
+    [
+      "U2.GND",
+      "GND"
+    ],
+    [
+      "U2.OA",
+      "DS1.a"
+    ],
+    [
+      "U2.OB",
+      "DS1.b"
+    ],
+    [
+      "U2.OC",
+      "DS1.c"
+    ],
+    [
+      "U2.OD",
+      "DS1.d"
+    ],
+    [
+      "U2.OE",
+      "DS1.e"
+    ],
+    [
+      "U2.OF",
+      "DS1.f"
+    ],
+    [
+      "U2.OG",
+      "DS1.g"
+    ],
+    [
+      "DS1.dp",
+      "GND"
+    ],
+    [
+      "DS1.COM",
+      "R1.1"
+    ],
+    [
+      "R1.2",
+      "GND"
+    ]
   ]
 }

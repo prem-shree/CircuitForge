@@ -84,12 +84,40 @@
 
     "components": {
       "type": "array",
+      "maxItems": 1500,
       "items": {
         "type": "object",
         "required": ["id", "type"],
         "properties": {
           "id": { "type": "string", "pattern": "^[^.\\s]+$", "description": "Unique reference designator, e.g. R1. No dots or spaces." },
-          "type": { "type": "string", "description": "Component type or alias (resistor, npn, opamp, timer_555, arduino_uno, ground, …)." },
+          "type": {
+            "type": "string",
+            "description": "Component type or alias. Case, spaces and hyphens are ignored (\"Op-Amp\" is \"op_amp\"). The examples list the canonical names; it is generated, run `npm run schema` after adding a symbol.",
+            "examples": [
+              "ac_source", "adc", "adjustable_regulator", "agnd", "ammeter", "and",
+              "and3", "and4", "antenna", "arduino_uno", "battery", "bcd_7seg_decoder",
+              "bluetooth_module", "bridge_rectifier", "buffer", "buzzer", "capacitor", "capacitor_polarized",
+              "comparator", "connector", "counter", "crystal", "current_source", "d_flipflop",
+              "d_latch", "dac", "dc_source", "decoder", "demux", "dgnd",
+              "diode", "dip_switch", "encoder", "esp32", "full_adder", "fuse",
+              "generic_ic", "ground", "half_adder", "humidity_sensor", "i2c_eeprom", "igbt",
+              "imu", "inductor", "input", "jfet", "jfet_p", "jk_flipflop",
+              "junction", "keypad", "lamp", "lcd", "ldo", "led",
+              "memory", "microcontroller", "microphone", "motor", "motor_driver", "mux",
+              "nand", "nand3", "nand4", "net_label", "nmos", "nor",
+              "nor3", "nor4", "not", "npn", "oled", "opamp",
+              "optocoupler", "or", "or3", "or4", "oscillator", "output",
+              "photodiode", "photoresistor", "phototransistor", "pir_sensor", "pmos", "pnp",
+              "potentiometer", "power_jack", "push_button", "register", "relay", "resistor",
+              "rgb_led", "rp2040", "rtc", "schmitt_trigger", "schottky", "scr",
+              "sd_card", "sensor", "servo", "seven_segment", "shift_register", "spdt_switch",
+              "speaker", "sr_flipflop", "stepper_motor", "stm32", "switch", "t_flipflop",
+              "temperature_sensor", "test_point", "thermistor", "timer_555", "transformer", "triac",
+              "tristate_buffer", "tvs_diode", "ultrasonic_sensor", "usb_connector", "variable_resistor", "varistor",
+              "vcc", "vdd", "voltage_regulator", "voltmeter", "vss", "xnor",
+              "xor", "zener"
+            ]
+          },
           "value": { "type": ["string", "number"], "description": "Shown next to the part. For ground/vcc/net_label it names the rail." },
           "label": { "type": "string", "description": "Display name instead of the id; for box parts it is the text inside the box." },
           "rotation": { "type": "number", "description": "Clockwise degrees, any angle (45, 30, -90…). Rotates the drawing and the pin coordinates together; angled pins snap to the nearest grid point outside the lead. Omit for automatic orientation." },
@@ -99,7 +127,7 @@
             "type": "object",
             "description": "Canvas coordinates of the part's first pin. Omit for automatic placement.",
             "required": ["x", "y"],
-            "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+            "properties": { "x": { "type": "number", "minimum": -20000, "maximum": 20000 }, "y": { "type": "number", "minimum": -20000, "maximum": 20000 } }
           },
           "section": { "enum": ["input", "process", "output", "power"], "description": "Puts the part in the left, middle or right band of the sheet." },
           "pins": {
@@ -153,10 +181,11 @@
 
     "connections": {
       "type": "array",
+      "maxItems": 6000,
       "description": "Each entry joins two or more pins into one net. Pin references are \"ComponentId.pin\"; single-pin parts may be referenced without a pin.",
       "items": {
         "oneOf": [
-          { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+          { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 500 },
           {
             "type": "object",
             "required": ["from", "to"],
@@ -170,7 +199,7 @@
             "type": "object",
             "required": ["pins"],
             "properties": {
-              "pins": { "type": "array", "items": { "type": "string" }, "minItems": 2 },
+              "pins": { "type": "array", "items": { "type": "string" }, "minItems": 2, "maxItems": 500 },
               "net": { "type": "string", "description": "Net name; nets with the same name are joined." },
               "class": { "enum": ["signal", "power", "ground", "bus", "analog", "clock", "differential"] },
               "waypoints": { "$ref": "#/$defs/points", "description": "Points the router must pass through." },
@@ -235,11 +264,11 @@
   "$defs": {
     "points": {
       "type": "array",
-      "description": "Points as [{\"x\":120,\"y\":80}] or [[120,80]]; snapped to the 10px grid.",
+      "description": "Points as [{\"x\":120,\"y\":80}] or [[120,80]]; snapped to the 10px grid. Coordinates must lie within ±20000.",
       "items": {
         "oneOf": [
-          { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number" }, "y": { "type": "number" } } },
-          { "type": "array", "items": { "type": "number" }, "minItems": 2, "maxItems": 2 }
+          { "type": "object", "required": ["x", "y"], "properties": { "x": { "type": "number", "minimum": -20000, "maximum": 20000 }, "y": { "type": "number", "minimum": -20000, "maximum": 20000 } } },
+          { "type": "array", "items": { "type": "number", "minimum": -20000, "maximum": 20000 }, "minItems": 2, "maxItems": 2 }
         ]
       }
     }

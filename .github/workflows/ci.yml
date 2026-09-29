@@ -1,0 +1,31 @@
+name: CI
+
+# Runs the tests and the build on every pull request and on branch pushes. Pushes to
+# main/master are tested by the Pages workflow, which also deploys.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main, master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build

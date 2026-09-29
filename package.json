@@ -1,6 +1,6 @@
 {
   "name": "circuitforge",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "JSON-to-ECE circuit schematic generator for electronics students — static web app, SVG output, design-rule checks.",
   "type": "module",
   "private": true,
@@ -10,7 +10,9 @@
     "build": "node scripts/build.mjs",
     "dev": "node scripts/build.mjs --serve",
     "test": "node scripts/build-symbols.mjs && node --test \"tests/*.test.js\"",
-    "api": "node server/server.mjs"
+    "api": "node server/server.mjs",
+    "schema": "node scripts/update-schema.mjs",
+    "smoke": "node scripts/build.mjs && node scripts/ui-smoke.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.25.0"

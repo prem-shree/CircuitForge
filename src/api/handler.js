@@ -22,7 +22,7 @@ export function handleRequest(req, { apiKeys = null } = {}) {
 
   if (path === '/api/v1/validate') {
     const v = validate(body.circuit);
-    return json(v.valid ? 200 : 422, v);
+    return json(v.errors.some((e) => e.code === 'INTERNAL_ERROR') ? 500 : v.valid ? 200 : 422, v);
   }
   const format = String(body.format || 'svg').toLowerCase();
   if (format === 'png' || format === 'pdf' || format === 'jpeg') {
@@ -30,7 +30,17 @@ export function handleRequest(req, { apiKeys = null } = {}) {
   }
   if (format !== 'svg' && format !== 'json') return json(400, { error: 'INVALID_FORMAT', message: 'format must be "svg" or "json".' });
   const r = render(body.circuit, { theme: body.theme === 'dark' ? 'dark' : 'light', bridges: !!body.bridges, background: body.transparent ? null : undefined });
-  if (!r.valid) return json(422, { valid: false, errors: r.errors, warnings: r.warnings });
+  // Structural errors (nothing to draw) are the caller's problem, an internal error is ours.
+  if (!r.svg) return json(r.errors.some((e) => e.code === 'INTERNAL_ERROR') ? 500 : 422, { valid: false, errors: r.errors, warnings: r.warnings, findings: r.findings });
+  // A design error (a shorted supply, a reversed diode) still has a drawing; say why it was
+  // held back, and let the caller ask for it anyway with "allowDesignErrors": true.
+  if (!r.valid && !body.allowDesignErrors) {
+    const bad = r.findings.filter((f) => f.severity === 'error');
+    return json(422, {
+      valid: false, errors: r.errors, warnings: r.warnings, findings: r.findings,
+      message: `The circuit drew, but ${bad.length} design error${bad.length > 1 ? 's were' : ' was'} found (${bad.map((f) => f.code).join(', ')}). Send "allowDesignErrors": true to receive the drawing anyway.`,
+    });
+  }
   if (format === 'svg') return { status: 200, headers: { 'content-type': 'image/svg+xml; charset=utf-8' }, body: r.svg };
-  return json(200, { valid: true, warnings: r.warnings, width: r.width, height: r.height, svg: r.svg });
+  return json(200, { valid: r.valid, warnings: r.warnings, findings: r.findings, width: r.width, height: r.height, svg: r.svg });
 }

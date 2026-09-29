@@ -37,7 +37,7 @@ const DEFAULTS = {
 // Parts whose "value" is a number with a unit. Symbolic values such as "Rx" are
 // legitimate in teaching diagrams, so only a value that starts like a number and
 // then fails to parse is reported.
-const VALUE_UNITS = {
+export const VALUE_UNITS = {
   resistor: ['Ω', '4.7kΩ, 100Ω or 2MΩ'], variable_resistor: ['Ω', '4.7kΩ, 100Ω or 2MΩ'], potentiometer: ['Ω', '10kΩ, 470Ω or 1MΩ'],
   capacitor: ['F', '100nF, 4.7µF or 22pF'], capacitor_polarized: ['F', '100µF, 4.7µF or 1000µF'],
   inductor: ['H', '10mH, 1µH or 2.2mH'],

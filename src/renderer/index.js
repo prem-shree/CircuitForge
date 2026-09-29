@@ -55,10 +55,14 @@ export function renderSVG(scene, opts = {}) {
     if (!bridgeAt.has(c.h)) bridgeAt.set(c.h, []);
     bridgeAt.get(c.h).push(c);
   }
+  const wireHits = [];
   for (const net of scene.routing.nets.values()) {
     const hops = bridgeAt.get(net.id) || [];
     const d = net.paths.map((p) => pathD(p, hops)).join('');
-    if (d) out.push(`<path data-net="${esc(net.id)}" d="${d}"/>`);
+    if (d) {
+      out.push(`<path data-net="${esc(net.id)}" d="${d}"/>`);
+      if (opts.interactive) wireHits.push(`<path class="cf-wire-hit" data-net="${esc(net.id)}" d="${d}"/>`);
+    }
   }
   // Lead extensions: angled parts reach their grid-aligned pin tips here.
   const ext = [];
@@ -67,6 +71,8 @@ export function renderSVG(scene, opts = {}) {
   }
   if (ext.length) out.push(`<path class="cf-leads" stroke-linecap="round" d="${ext.join('')}"/>`);
   out.push('</g>');
+  // wide, invisible copies of the wires: something a pointer can actually hit
+  if (opts.interactive && wireHits.length) out.push(`<g id="wire-hits" fill="none" stroke="transparent" stroke-width="10" stroke-linejoin="round">${wireHits.join('')}</g>`);
 
   // components
   out.push(`<g id="components" color="${th.ink}">`);
@@ -110,8 +116,16 @@ export function renderSVG(scene, opts = {}) {
 
   // junctions
   out.push(`<g id="junctions" fill="${th.junction}" stroke="none">`);
-  for (const j of scene.routing.junctions) out.push(`<circle cx="${n(j.x)}" cy="${n(j.y)}" r="3.2"/>`);
+  for (const j of scene.routing.junctions) out.push(`<circle cx="${n(j.x)}" cy="${n(j.y)}" r="3.2" data-net="${esc(j.net)}"/>`);
   out.push('</g>');
+  // pin hotspots for the wiring tool (hidden unless the canvas is in connect mode)
+  if (opts.interactive) {
+    const hot = [];
+    for (const I of scene.instances.values()) {
+      for (const [name, p] of Object.entries(I.pins)) hot.push(`<circle class="cf-pin" data-ref="${esc(`${I.id}.${name}`)}" data-net="${esc(I.part.pinNets[name] || '')}" cx="${n(p.x)}" cy="${n(p.y)}" r="5.5"><title>${esc(`${I.id}.${name}`)}</title></circle>`);
+    }
+    if (hot.length) out.push(`<g id="pin-hits" fill="transparent" stroke="none">${hot.join('')}</g>`);
+  }
 
   // measurements and annotations declared in the JSON
   const extras = renderExtras(scene, th);

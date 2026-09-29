@@ -1,0 +1,34 @@
+{
+  "title": "2-Bit Ripple-Carry Adder",
+  "description": "A half adder for bit 0 and a full adder for bit 1; the carry ripples from one to the next.",
+  "education": {
+    "summary": "Adding binary numbers bit by bit: each stage adds two bits plus the carry from the stage before it.",
+    "objectives": [
+      "Trace a carry through two stages",
+      "Explain why the first stage needs no carry input",
+      "Predict the sum for any pair of 2-bit inputs"
+    ],
+    "questions": ["What is 11 + 01 in binary, and which output bits go high?", "How many gate delays does the carry take to cross n stages?"]
+  },
+  "components": [
+    { "id": "A0", "type": "input", "label": "A0", "section": "input" },
+    { "id": "B0", "type": "input", "label": "B0", "section": "input" },
+    { "id": "A1", "type": "input", "label": "A1", "section": "input" },
+    { "id": "B1", "type": "input", "label": "B1", "section": "input" },
+    { "id": "HA0", "type": "half_adder" },
+    { "id": "FA1", "type": "full_adder" },
+    { "id": "S0", "type": "output", "label": "S0", "section": "output" },
+    { "id": "S1", "type": "output", "label": "S1", "section": "output" },
+    { "id": "S2", "type": "output", "label": "S2 (carry out)", "section": "output" }
+  ],
+  "connections": [
+    ["A0", "HA0.A"],
+    ["B0", "HA0.B"],
+    ["A1", "FA1.A"],
+    ["B1", "FA1.B"],
+    ["HA0.C", "FA1.CIN"],
+    ["HA0.S", "S0"],
+    ["FA1.S", "S1"],
+    ["FA1.COUT", "S2"]
+  ]
+}

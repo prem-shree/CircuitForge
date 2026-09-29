@@ -97,3 +97,25 @@ test('API handler: render, validate, auth and unsupported formats', () => {
   assert.equal(handleRequest({ method: 'POST', path: '/api/v1/render', headers: { authorization: 'Bearer k' }, body: { circuit: bjt } }, { apiKeys: ['k'] }).status, 200);
   assert.equal(handleRequest({ method: 'POST', path: '/api/v1/render', body: '{oops' }).status, 400);
 });
+
+test('API handler: design errors explain themselves and can be overridden', () => {
+  const shorted = { components: [{ id: 'V1', type: 'dc_source', value: '5V' }, { id: 'GND', type: 'ground' }, { id: 'VCC', type: 'vcc', value: '5V' }],
+    connections: [['V1.positive', 'VCC'], ['VCC', 'GND'], ['V1.negative', 'GND']] };
+  const held = handleRequest({ method: 'POST', path: '/api/v1/render', body: { circuit: shorted } });
+  assert.equal(held.status, 422);
+  const body = JSON.parse(held.body);
+  assert.ok(body.findings.some((f) => f.severity === 'error'), 'the findings say what is wrong');
+  assert.match(body.message, /design error/);
+  assert.match(body.message, /allowDesignErrors/);
+  // with the opt-in the drawing is delivered, findings and all
+  const drawn = handleRequest({ method: 'POST', path: '/api/v1/render', body: { circuit: shorted, allowDesignErrors: true } });
+  assert.equal(drawn.status, 200);
+  assert.match(drawn.body, /^<svg/);
+  const asJson = JSON.parse(handleRequest({ method: 'POST', path: '/api/v1/render', body: { circuit: shorted, allowDesignErrors: true, format: 'json' } }).body);
+  assert.equal(asJson.valid, false);
+  assert.ok(asJson.svg && asJson.findings.length);
+  // structural errors still carry their located problems
+  const broken = JSON.parse(handleRequest({ method: 'POST', path: '/api/v1/render', body: { circuit: { components: [{ id: 'R1', type: 'resistr' }] } } }).body);
+  assert.equal(broken.errors[0].path, 'components[0].type');
+  assert.equal(broken.errors[0].fix.value, 'resistor');
+});

@@ -1,0 +1,84 @@
+{
+  "title": "Wheatstone Bridge",
+  "education": {
+    "summary": "Two voltage dividers side by side; the meter between their midpoints reads zero when the ratios match.",
+    "objectives": [
+      "Write the balance condition",
+      "Find an unknown resistance from a balanced bridge",
+      "Explain why a null reading is more precise than a direct one"
+    ],
+    "theory": "The bridge is balanced, and no current flows through G1, when R1/R3 = R2/RX, so RX = R2·R3/R1.",
+    "questions": [
+      "What value of RX balances this bridge?",
+      "Which way does current flow through G1 if RX is larger than that?"
+    ]
+  },
+  "components": [
+    {
+      "id": "V1",
+      "type": "dc_source",
+      "value": "10V"
+    },
+    {
+      "id": "R1",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "R2",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "R3",
+      "type": "resistor",
+      "value": "1kΩ"
+    },
+    {
+      "id": "RX",
+      "type": "resistor",
+      "value": "Rx"
+    },
+    {
+      "id": "G1",
+      "type": "ammeter",
+      "value": "Galvanometer"
+    },
+    {
+      "id": "GND",
+      "type": "ground"
+    }
+  ],
+  "connections": [
+    {
+      "net": "TOP",
+      "pins": [
+        "V1.positive",
+        "R1.1",
+        "R2.1"
+      ]
+    },
+    {
+      "net": "A",
+      "pins": [
+        "R1.2",
+        "R3.1",
+        "G1.1"
+      ]
+    },
+    {
+      "net": "B",
+      "pins": [
+        "R2.2",
+        "RX.1",
+        "G1.2"
+      ]
+    },
+    [
+      "R3.2",
+      "RX.2",
+      "V1.negative",
+      "GND"
+    ]
+  ]
+}

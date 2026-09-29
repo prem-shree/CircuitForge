@@ -1,59 +1,73 @@
 import './styles.css';
-import { render, validate, listTypes, explainType, explainCircuit, RULE_HELP } from '../engine.js';
+import { render, validate, listTypes, explainType, explainCircuit } from '../engine.js';
 import { parseJSON } from '../parser/index.js';
-import { resolveSymbol } from '../symbol-loader/index.js';
-import { History } from '../editor/history.js';
-import { formatJSON, deleteComponent, renameComponent, updateComponent, pinLayout, rotateComponent, clearLayout, addComponent, setSpacing, EMPTY_CIRCUIT } from '../editor/model.js';
+import { formatJSON, clearLayout, setSpacing, EMPTY_CIRCUIT } from '../editor/model.js';
+import { pruneSelection, describeIds } from '../editor/selection.js';
+import { hashText } from '../editor/cache.js';
 import { download, toPNG, toJPEG, toPDF, copyText, copyPNG, slug } from '../exporters/index.js';
 import { handleRequest } from '../api/handler.js';
 import { Canvas } from './canvas.js';
 import { EXAMPLES } from './examples.js';
-
-const $ = (s, r = document) => r.querySelector(s);
-const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+import { state, history, renderCache, store, $, $$, esc } from './state.js';
+import { initProblems } from './problems.js';
+import { initInspector } from './inspector.js';
+import { initCommands } from './commands.js';
+import { initDrag } from './drag.js';
+import { initLibrary } from './library.js';
 
 // Public scripting API (see the API dialog).
 window.CircuitForge = { render, validate, types: listTypes, explain: explainType, explainCircuit };
 
-const store = {
-  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch { /* storage unavailable */ } },
-};
-
-const state = {
-  text: '',
-  circuit: null,   // last successfully parsed circuit object
-  result: null,    // last successful render (with scene)
-  selected: null,
-  snap: store.get('cf-snap') !== '0',
-  grid: store.get('cf-grid') !== '0',
-  bridges: store.get('cf-bridges') === '1',
-  drag: null,
-};
-const history = new History();
-
-// ---------------------------------------------------------------- elements
+// ---------------------------------------------------------------- app
+// One object the UI modules use to talk to each other.
 const textarea = $('#json');
-const gutter = $('#gutter');
 const canvasEl = $('#canvas');
-const canvas = new Canvas(canvasEl, $('#viewport'), {
-  onSelect: (id) => select(id),
-  onDragMove,
-  onDragEnd,
+const app = {
+  canvas: null,
+  scene: () => state.result?.scene || null,
+  theme: () => (isDark() ? 'dark' : 'light'),
+  toast, update, commit, select, setNet, setHint,
+};
+const canvas = app.canvas = new Canvas(canvasEl, $('#viewport'), {
+  onSelect: (ids) => select(ids, { fromCanvas: true }),
+  onDragStart: (ids, primary) => drag.start(ids, primary),
+  onDragMove: (dx, dy) => drag.move(dx, dy),
+  onDragEnd: (cancelled) => drag.end(cancelled),
+  onMarquee: (rect, additive) => commands.marquee(rect, additive),
+  onNetSelect: (net) => setNet(net),
+  onPinClick: (ref, pos) => commands.pinClick(ref, pos),
   onViewChange: (s) => {
     const z = `${Math.round(s * 100)}%`;
     $('#zoom-label').textContent = z;
     $('#status-zoom').textContent = z;
   },
 });
+const problems = initProblems(app);
+const inspector = initInspector(app);
+const commands = initCommands(app);
+const drag = initDrag(app);
+const library = initLibrary(app, commands);
 
 // ---------------------------------------------------------------- theme
 const darkQuery = matchMedia('(prefers-color-scheme: dark)');
-const isDark = () => (document.documentElement.dataset.theme || (darkQuery.matches ? 'dark' : 'light')) === 'dark';
+function isDark() { return (document.documentElement.dataset.theme || (darkQuery.matches ? 'dark' : 'light')) === 'dark'; }
 darkQuery.addEventListener('change', () => update());
 
 // ---------------------------------------------------------------- rendering
+// The last few renders are kept, so undo, redo and switching theme do not lay
+// out and route the circuit again.
+function renderCached(value, text) {
+  const key = `${isDark() ? 'd' : 'l'}${state.bridges ? 'b' : ''}|${hashText(text)}`;
+  const hit = renderCache.get(key);
+  if (hit) { state.lastMs = hit.ms ?? state.lastMs; return hit; }
+  const r = render(value, { theme: isDark() ? 'dark' : 'light', background: null, interactive: true, bridges: state.bridges });
+  if (r.svg) {
+    state.lastMs = r.ms ?? 0;
+    renderCache.set(key, r);
+  }
+  return r;
+}
+
 function update({ fit = false } = {}) {
   const parsed = parseJSON(state.text);
   let errors = [], warnings = [], findings = [];
@@ -62,17 +76,20 @@ function update({ fit = false } = {}) {
     canvas.setStale(true);
   } else {
     state.circuit = parsed.value;
-    const r = render(parsed.value, { theme: isDark() ? 'dark' : 'light', background: null, interactive: true, bridges: state.bridges });
+    const r = renderCached(parsed.value, state.text);
     errors = r.errors;
     warnings = r.warnings;
     findings = r.findings || [];
-    if (r.valid) {
+    // Design findings (a reversed diode, a short) never stop the drawing; only structural errors do.
+    if (r.svg) {
       state.result = r;
       canvas.setSVG(r.svg, r.viewBox, { keepView: !fit });
       canvas.setStale(false);
       if (fit) canvas.fit();
-      if (state.selected && !r.scene.instances.has(state.selected)) select(null);
-      else if (state.selected) fillInspector();
+      state.net = null;
+      const kept = pruneSelection(state.selection, r.scene.instances);
+      if (kept.length !== state.selection.length) select(kept);
+      else inspector.fill();
     } else {
       canvas.setStale(true);
     }
@@ -80,9 +97,9 @@ function update({ fit = false } = {}) {
   const comps = Array.isArray(state.circuit?.components) ? state.circuit.components.length : 0;
   $('#empty-state').hidden = !(comps === 0 && !errors.length);
   state.findings = findings;
-  showProblems(errors, warnings, findings);
+  problems.show(errors, warnings, findings);
   updateStatus(errors, warnings, findings);
-  updateGutter(errors);
+  problems.gutterMarks();
   store.set('cf-last', state.text);
 }
 
@@ -98,108 +115,110 @@ function updateStatus(errors, warnings, findings = []) {
       : issues ? `Rendered · ${issues} issue${issues > 1 ? 's' : ''}` : 'Rendered';
   const scene = state.result?.scene;
   if (scene) {
-    const nets = [...scene.netlist.nets.values()].length;
+    const nets = scene.netlist.nets.size;
     $('#status-counts').textContent = `${scene.instances.size} parts · ${nets} nets · ${scene.routing.junctions.length} junctions · ${scene.routing.crossings.length} crossings`;
     $('#spacing').value = state.circuit?.layout?.spacing || '';
     $('#status-size').textContent = `${state.result.width} × ${state.result.height} px`;
     $('#editor-meta').textContent = `${state.circuit?.components?.length ?? 0} components`;
   }
   $('#status-grid').textContent = state.grid ? (state.snap ? '20 px snap' : '10 px') : 'off';
+  updateSelectionInfo();
 }
 
-const escRe = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-function lineMatching(re) {
-  const i = state.text.split('\n').findIndex((l) => re.test(l));
-  return i >= 0 ? i + 1 : null;
-}
-// Best-effort source line for a problem: explicit line, offending reference, or component entry.
-function lineOf(p) {
-  return p.line
-    || (p.ref && lineMatching(new RegExp(escRe(JSON.stringify(p.ref)))))
-    || (p.component && lineMatching(new RegExp(`"id"\\s*:\\s*${escRe(JSON.stringify(p.component))}`)))
-    || null;
+function updateSelectionInfo() {
+  const scene = app.scene();
+  const ids = state.selection;
+  let text = '';
+  if (state.net && scene?.netlist.nets.has(state.net)) {
+    const net = scene.netlist.nets.get(state.net);
+    text = `Net ${net.name || (net.rail ? net.rail.name : state.net)}: ${net.pins.slice(0, 6).map((p) => `${p.comp}.${p.pin}`).join(', ')}${net.pins.length > 6 ? ` … (${net.pins.length} pins)` : ''}`;
+  } else if (ids.length === 1 && scene?.instances.has(ids[0])) {
+    const I = scene.instances.get(ids[0]);
+    text = `${I.id} · ${I.part.sym.name} · ${Math.round(I.x)}, ${Math.round(I.y)} · ${I.rot}°`;
+  } else if (ids.length > 1) text = `${describeIds(ids)} selected`;
+  $('#status-sel').textContent = text;
 }
 
-function showProblems(errors, warnings, findings = []) {
-  const list = $('#problems-list');
-  list.textContent = '';
-  const all = [
-    ...errors.map((e) => ({ ...e, level: 'error' })),
-    ...findings.map((f) => ({ ...f, level: f.severity === 'error' ? 'error' : f.severity === 'info' ? 'info' : 'warning' })),
-    ...warnings.map((w) => ({ ...w, level: 'warning' })),
-  ];
-  $('#problems-title').textContent = all.length ? `Problems (${all.length})` : 'Problems';
-  if (!all.length) {
-    const li = document.createElement('li');
-    li.className = 'ok';
-    li.textContent = 'No problems. The circuit is valid.';
-    list.append(li);
-    return;
-  }
-  for (const p of all) {
-    const li = document.createElement('li');
-    li.className = p.level;
-    li.innerHTML = '<span class="ico"></span><span class="code"></span><span class="msg"></span>';
-    li.querySelector('.code').textContent = p.code;
-    li.querySelector('.msg').textContent = p.message + (p.line && !/line \d/.test(p.message) ? ` (line ${p.line})` : '');
-    if (p.hint || p.formula) {
-      const extra = document.createElement('span');
-      extra.className = 'hint';
-      extra.textContent = [p.formula, p.hint].filter(Boolean).join(' · ');
-      li.append(extra);
-    }
-    const help = RULE_HELP[p.code];
-    li.title = help ? `${help.title}\n\n${help.why}\n\nFix: ${help.fix}` : 'Show in editor';
-    li.addEventListener('click', () => {
-      const line = lineOf(p);
-      if (p.component && state.result?.scene.instances.has(p.component)) select(p.component);
-      if (line) gotoLine(line);
-    });
-    list.append(li);
+// ---------------------------------------------------------------- selection
+function select(ids, { fromCanvas = false } = {}) {
+  state.selection = [...ids];
+  if (!fromCanvas) canvas.setSelection(state.selection);
+  if (state.net) setNet(null);
+  commands.cancelWire();
+  inspector.fill();
+  syncToolbar();
+  updateSelectionInfo();
+}
+
+function setNet(net) {
+  state.net = net || null;
+  canvas.setNetFocus(state.net);
+  updateSelectionInfo();
+}
+
+function setHint(text) { $('#status-hint').textContent = text || ''; }
+
+// ---------------------------------------------------------------- text and history
+let typingTimer = 0, historyTimer = 0;
+
+// Typing is recorded a moment after the last key; anything not yet recorded is
+// pushed now, so undo never skips over text that was just typed.
+function flushTyping() {
+  if (typingTimer) { clearTimeout(typingTimer); typingTimer = 0; update(); }
+  if (historyTimer) {
+    clearTimeout(historyTimer);
+    historyTimer = 0;
+    history.push(state.text, { label: 'Edit JSON', key: 'text', selection: state.selection });
   }
 }
 
-// ---------------------------------------------------------------- editor
-function updateGutter(errors = []) {
-  const n = state.text.split('\n').length;
-  const bad = new Set(errors.filter((e) => e.line).map((e) => e.line));
-  for (const e of errors) if (!e.line) { const l = lineOf(e); if (l) bad.add(l); }
-  let html = '';
-  for (let i = 1; i <= n; i++) html += bad.has(i) ? `<span class="err">${i}</span>\n` : `${i}\n`;
-  gutter.innerHTML = html;
-  gutter.scrollTop = textarea.scrollTop;
-}
-
-function gotoLine(line) {
-  const lines = state.text.split('\n');
-  const start = lines.slice(0, line - 1).reduce((a, l) => a + l.length + 1, 0);
-  textarea.focus();
-  textarea.setSelectionRange(start, start + (lines[line - 1] || '').length);
-  textarea.scrollTop = Math.max(0, (line - 5) * 20);
-}
-
-function setText(text, { record = true, fit = false } = {}) {
+function setText(text, { record = true, fit = false, label = null, key = null } = {}) {
+  clearTimeout(typingTimer); clearTimeout(historyTimer);
+  typingTimer = historyTimer = 0;
   state.text = text;
   if (textarea.value !== text) textarea.value = text;
-  if (record) history.push(text);
+  if (record) history.push(text, { label, key, selection: state.selection });
   update({ fit });
   syncToolbar();
 }
 
-function setCircuit(circuit, opts) {
-  setText(formatJSON(circuit) + '\n', opts);
+// Every edit from the canvas, inspector and commands comes through here: one
+// call, one undo step (or one merged step for repeated edits with the same key).
+function commit(circuit, { label = null, key = null, select: ids = null, fit = false } = {}) {
+  flushTyping();
+  if (ids) { state.selection = [...ids]; canvas.setSelection(state.selection); }
+  setText(formatJSON(circuit) + '\n', { label, key, fit });
 }
 
-let typingTimer = 0, historyTimer = 0;
+function restore(text, message) {
+  state.selection = [...(history.entry?.selection || [])];
+  canvas.setSelection(state.selection);
+  setText(text, { record: false });
+  toast(message);
+}
+function undo() {
+  flushTyping();
+  const label = history.undoLabel;
+  const t = history.undo();
+  if (t !== null) restore(t, `Undid ${label || 'change'}`);
+}
+function redo() {
+  flushTyping();
+  const label = history.redoLabel;
+  const t = history.redo();
+  if (t !== null) restore(t, `Redid ${label || 'change'}`);
+}
+
 textarea.addEventListener('input', () => {
   state.text = textarea.value;
   clearTimeout(typingTimer);
   clearTimeout(historyTimer);
-  typingTimer = setTimeout(() => update(), 180);
-  historyTimer = setTimeout(() => { history.push(state.text); syncToolbar(); }, 600);
-  updateGutter();
+  // wait longer before re-rendering when renders are slow
+  typingTimer = setTimeout(() => { typingTimer = 0; update(); }, Math.min(700, Math.max(150, state.lastMs * 2)));
+  historyTimer = setTimeout(() => { historyTimer = 0; history.push(state.text, { label: 'Edit JSON', key: 'text', selection: state.selection }); syncToolbar(); }, 600);
+  problems.gutterMarks();
 });
-textarea.addEventListener('scroll', () => { gutter.scrollTop = textarea.scrollTop; });
+textarea.addEventListener('scroll', () => { $('#gutter').scrollTop = textarea.scrollTop; });
 textarea.addEventListener('keydown', (e) => {
   if (e.key === 'Tab' && !e.ctrlKey && !e.metaKey) {
     e.preventDefault();
@@ -207,124 +226,15 @@ textarea.addEventListener('keydown', (e) => {
   }
 });
 
-// ---------------------------------------------------------------- selection / inspector
-const typeSelect = $('#inspector-form select[name=type]');
-{
-  const byCat = {};
-  for (const t of listTypes()) (byCat[t.category] ||= []).push(t);
-  for (const [cat, types] of Object.entries(byCat)) {
-    const g = document.createElement('optgroup');
-    g.label = cat[0].toUpperCase() + cat.slice(1);
-    for (const t of types.sort((a, b) => a.name.localeCompare(b.name))) g.append(new Option(`${t.name}`, t.type));
-    typeSelect.append(g);
-  }
-}
-
-function select(id) {
-  state.selected = id;
-  canvas.select(id);
-  $('#inspector').hidden = !id;
-  if (id) fillInspector();
+// ---------------------------------------------------------------- toolbar
+function setTool(tool) {
+  state.tool = tool;
+  canvas.setMode(tool === 'wire' ? 'connect' : 'select');
+  commands.cancelWire();
+  setHint(tool === 'wire' ? 'Wire tool: click a pin, then another pin (Esc to leave)' : '');
   syncToolbar();
 }
 
-function fillInspector() {
-  const comp = state.circuit?.components?.find((c) => c.id === state.selected);
-  const I = state.result?.scene.instances.get(state.selected);
-  if (!comp || !I) return;
-  const f = $('#inspector-form');
-  f.id.value = comp.id;
-  f.type.value = I.part.sym.type;
-  f.value.value = comp.value ?? '';
-  f.label.value = comp.label ?? '';
-  f.rotation.value = comp.rotation ?? comp.angle ?? '';
-  f.mirror.checked = !!comp.mirror;
-  const sym = I.part.sym;
-  const note = explainType(sym.type);
-  const pinHelp = new Map((note?.pins || []).map((p) => [p.name, p]));
-  $('#inspector-pins').innerHTML = '<b>Pins</b><br>' + sym.pinOrder.map((p) => {
-    const h = pinHelp.get(p);
-    return `<code title="${esc(h?.note || h?.electrical || '')}">${esc(p)}</code>`;
-  }).join('');
-  const box = $('#inspector-edu');
-  if (note && (note.purpose || note.formulas.length)) {
-    box.hidden = false;
-    box.innerHTML = `<b>${esc(note.name)}</b>`
-      + (note.purpose ? `<p>${esc(note.purpose)}</p>` : '')
-      + (note.formulas.length ? `<p class="formula">${note.formulas.map(esc).join('<br>')}</p>` : '')
-      + (note.mistakes.length ? `<p class="watch">Watch out: ${esc(note.mistakes[0])}</p>` : '')
-      + '<button type="button" class="btn btn-sm" data-action="learn">Learn more</button>';
-  } else box.hidden = true;
-}
-
-$('#inspector-form').addEventListener('change', (e) => {
-  const f = e.currentTarget;
-  const id = state.selected;
-  if (!id || !state.circuit) return;
-  const name = e.target.name;
-  let c = state.circuit;
-  if (name === 'id') {
-    const next = f.id.value.trim();
-    if (!next || /[.\s]/.test(next)) return toast('IDs cannot be empty or contain dots/spaces.', true);
-    if (next !== id && c.components.some((x) => x.id === next)) return toast(`ID "${next}" is already used.`, true);
-    c = renameComponent(c, id, next);
-    state.selected = next;
-  } else if (name === 'rotation') {
-    c = updateComponent(c, id, { rotation: f.rotation.value === '' ? undefined : Number(f.rotation.value), angle: undefined });
-  } else if (name === 'mirror') {
-    c = updateComponent(c, id, { mirror: f.mirror.checked || undefined });
-  } else if (name === 'type' || name === 'value' || name === 'label') {
-    c = updateComponent(c, id, { [name]: f[name].value });
-  } else return;
-  setCircuit(c);
-  select(state.selected);
-});
-$('#inspector-form').addEventListener('submit', (e) => e.preventDefault());
-
-// ---------------------------------------------------------------- drag
-const snapStep = () => (state.snap ? 20 : 10);
-function onDragMove(id, dx, dy) {
-  const scene = state.result?.scene;
-  if (!scene || !state.circuit) return;
-  if (!state.drag || state.drag.id !== id) {
-    state.drag = { id, base: scene.instances, circuit: state.circuit, start: { x: scene.instances.get(id).x, y: scene.instances.get(id).y }, last: null };
-  }
-  const d = state.drag;
-  const step = snapStep();
-  const x = Math.round((d.start.x + dx) / step) * step;
-  const y = Math.round((d.start.y + dy) / step) * step;
-  if (d.last && d.last.x === x && d.last.y === y) return;
-  d.last = { x, y };
-  d.pending = pinLayout(d.circuit, d.base, { [id]: { x, y } });
-  if (!d.raf) d.raf = requestAnimationFrame(() => {
-    d.raf = 0;
-    const r = render(d.pending, { theme: isDark() ? 'dark' : 'light', background: null, interactive: true, bridges: state.bridges });
-    if (r.valid) { canvas.setSVG(r.svg, r.viewBox); state.liveResult = r; }
-  });
-}
-function onDragEnd(id, cancelled) {
-  const d = state.drag;
-  state.drag = null;
-  if (!d) return;
-  if (d.raf) cancelAnimationFrame(d.raf);
-  if (cancelled || !d.pending || (d.last.x === d.start.x && d.last.y === d.start.y)) return update();
-  setCircuit(d.pending);
-}
-
-// ---------------------------------------------------------------- commands
-function rotateSelected(step = 90) {
-  if (!state.selected || !state.result) return;
-  setCircuit(rotateComponent(state.circuit, state.result.scene.instances, state.selected, step));
-}
-function deleteSelected() {
-  if (!state.selected || !state.circuit) return;
-  const id = state.selected;
-  select(null);
-  setCircuit(deleteComponent(state.circuit, id));
-  toast(`Deleted ${id}`);
-}
-function undo() { const t = history.undo(); if (t !== null) setText(t, { record: false }); }
-function redo() { const t = history.redo(); if (t !== null) setText(t, { record: false }); }
 function toggle(key) {
   state[key] = !state[key];
   store.set(`cf-${key}`, state[key] ? '1' : '0');
@@ -332,42 +242,90 @@ function toggle(key) {
   syncToolbar();
   update();
 }
+
 function syncToolbar() {
-  $$('[data-tool=undo]').forEach((b) => (b.disabled = !history.canUndo));
-  $$('[data-tool=redo]').forEach((b) => (b.disabled = !history.canRedo));
-  $$('.toolbar [data-tool=rotate], .toolbar [data-tool=delete]').forEach((b) => (b.disabled = !state.selected));
+  const has = state.selection.length > 0;
+  $$('[data-tool=undo]').forEach((b) => { b.disabled = !history.canUndo; b.title = history.canUndo ? `Undo ${history.undoLabel || ''} (Ctrl+Z)`.replace('  ', ' ') : 'Undo (Ctrl+Z)'; });
+  $$('[data-tool=redo]').forEach((b) => { b.disabled = !history.canRedo; b.title = history.canRedo ? `Redo ${history.redoLabel || ''} (Ctrl+Y)`.replace('  ', ' ') : 'Redo (Ctrl+Y)'; });
+  $$('[data-selection-tool]').forEach((b) => (b.disabled = !has));
   for (const k of ['grid', 'snap', 'bridges']) $(`[data-tool=${k}]`).setAttribute('aria-pressed', String(state[k]));
+  $('[data-tool=select]').setAttribute('aria-pressed', String(state.tool === 'select'));
+  $('[data-tool=wire]').setAttribute('aria-pressed', String(state.tool === 'wire'));
 }
 
 const tools = {
   undo, redo,
-  rotate: (e) => rotateSelected(e?.shiftKey ? 45 : 90),
-  delete: deleteSelected,
-  autolayout: () => { if (state.circuit) { setCircuit(clearLayout(state.circuit), { fit: true }); toast('Automatic layout restored'); } },
+  select: () => setTool('select'),
+  wire: () => setTool(state.tool === 'wire' ? 'select' : 'wire'),
+  rotate: (e) => commands.rotate(e?.shiftKey ? 45 : 90),
+  flip: () => commands.flip(),
+  duplicate: () => commands.duplicate(),
+  delete: () => commands.remove(),
+  autolayout: () => {
+    if (!state.circuit) return;
+    commit(clearLayout(state.circuit), { label: 'Automatic layout', fit: true });
+    toast('Automatic layout restored');
+  },
   grid: () => toggle('grid'),
   snap: () => toggle('snap'),
   bridges: () => toggle('bridges'),
   'zoom-in': () => canvas.zoomAt(1.25),
   'zoom-out': () => canvas.zoomAt(0.8),
   'zoom-reset': () => canvas.zoomTo(1),
+  'zoom-selection': () => commands.zoomToSelection(),
   fit: () => canvas.fit(),
 };
-$('#spacing').addEventListener('change', (e) => { if (state.circuit) setCircuit(setSpacing(state.circuit, e.target.value)); });
+$('#spacing').addEventListener('change', (e) => { if (state.circuit) commit(setSpacing(state.circuit, e.target.value), { label: 'Change spacing' }); });
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-tool]');
   if (t && tools[t.dataset.tool]) tools[t.dataset.tool](e);
 });
 
+// ---------------------------------------------------------------- keyboard
+const NUDGE = 10;
 document.addEventListener('keydown', (e) => {
   const mod = e.ctrlKey || e.metaKey;
+  const key = e.key;
   const inField = e.target.closest?.('input, textarea, select');
-  if (mod && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
-  if (mod && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
-  if (e.key === 'Escape') { closeMenus(); if (!inField) select(null); return; }
-  if (inField || mod || e.altKey) return;
-  if (e.key === ' ') { canvas.spaceDown = true; }
-  const map = { Delete: 'delete', Backspace: 'delete', r: 'rotate', R: 'rotate', f: 'fit', F: 'fit', g: 'grid', G: 'grid', s: 'snap', S: 'snap', '+': 'zoom-in', '=': 'zoom-in', '-': 'zoom-out', '0': 'zoom-reset' };
-  if (map[e.key]) { e.preventDefault(); tools[map[e.key]](e); }
+  const inDialog = !!document.querySelector('dialog[open]');
+  if (inDialog && key !== 'Escape') return;
+  if (mod && key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if (mod && key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+  if (key === 'Escape') {
+    closeMenus();
+    if (canvas.cancelGesture()) return;
+    if (commands.cancelWire()) return;
+    if (!inField) {
+      if (state.tool === 'wire') setTool('select');
+      else if (state.net) setNet(null);
+      else select([]);
+    }
+    return;
+  }
+  if (inField || e.altKey) return;
+  if (mod) {
+    const k = key.toLowerCase();
+    const handled = { a: () => commands.selectAll(), d: () => commands.duplicate(), c: () => commands.copy(), x: () => commands.cut(), v: () => commands.paste() }[k];
+    if (handled) { e.preventDefault(); handled(); }
+    return;
+  }
+  if (key === ' ') { canvas.spaceDown = true; return; } // (no preventDefault: Space must still press a focused button)
+  if (key === 'Tab' && document.activeElement === canvasEl) { e.preventDefault(); commands.cycle(e.shiftKey ? -1 : 1); return; }
+  // arrow keys belong to menus and buttons when one of them has focus
+  if (key.startsWith('Arrow') && (document.activeElement === canvasEl || document.activeElement === document.body)) {
+    e.preventDefault();
+    const d = (e.shiftKey ? 4 : 1) * NUDGE;
+    const dx = key === 'ArrowLeft' ? -d : key === 'ArrowRight' ? d : 0, dy = key === 'ArrowUp' ? -d : key === 'ArrowDown' ? d : 0;
+    if (state.selection.length) commands.nudge(dx, dy);
+    else { canvas.autoFit = false; canvas.tx -= dx * canvas.scale * 2; canvas.ty -= dy * canvas.scale * 2; canvas.apply(); }
+    return;
+  }
+  if (key === '?') { $('#help-dialog').showModal(); return; }
+  const map = {
+    Delete: 'delete', Backspace: 'delete', r: 'rotate', R: 'rotate', m: 'flip', M: 'flip', w: 'wire', W: 'wire', v: 'select', V: 'select',
+    f: 'fit', F: 'fit', z: 'zoom-selection', Z: 'zoom-selection', g: 'grid', G: 'grid', s: 'snap', S: 'snap', '+': 'zoom-in', '=': 'zoom-in', '-': 'zoom-out', '0': 'zoom-reset',
+  };
+  if (map[key]) { e.preventDefault(); tools[map[key]](e); }
 });
 document.addEventListener('keyup', (e) => { if (e.key === ' ') canvas.spaceDown = false; });
 
@@ -394,15 +352,15 @@ const examplesMenu = $('#menu-examples');
 EXAMPLES.forEach((s, i) => {
   const b = document.createElement('button');
   b.setAttribute('role', 'menuitem');
-  b.innerHTML = `<span class="num">${i ? i : '\u2605'}</span><span></span>`;
+  b.innerHTML = `<span class="num">${i ? i : '★'}</span><span></span>`;
   b.lastChild.textContent = s.title;
-  b.addEventListener('click', () => { closeMenus(); loadCircuit(s); });
+  b.addEventListener('click', () => { closeMenus(); loadCircuit(s, `Load ${s.title}`); });
   examplesMenu.append(b);
 });
 
-function loadCircuit(c) {
-  select(null);
-  setCircuit(c, { fit: true });
+function loadCircuit(c, label = 'New circuit') {
+  select([]);
+  commit(c, { label, fit: true });
 }
 
 // ---------------------------------------------------------------- actions
@@ -414,8 +372,9 @@ fileInput.addEventListener('change', async () => {
 });
 async function openFile(f) {
   const text = await f.text();
-  select(null);
-  setText(text, { fit: true });
+  select([]);
+  flushTyping();
+  setText(text, { fit: true, label: `Open ${f.name}` });
   toast(`Opened ${f.name}`);
 }
 document.addEventListener('dragover', (e) => e.preventDefault());
@@ -426,23 +385,24 @@ document.addEventListener('drop', (e) => {
 });
 
 const actions = {
-  new: () => loadCircuit(EMPTY_CIRCUIT),
+  new: () => loadCircuit(EMPTY_CIRCUIT, 'New circuit'),
   open: () => fileInput.click(),
   format: () => {
     const p = parseJSON(state.text);
     if (p.errors.length) return toast('Fix the JSON syntax error first.', true);
-    setCircuit(p.value);
+    commit(p.value, { label: 'Format JSON' });
   },
   api: () => $('#api-dialog').showModal(),
-  library: () => { buildLibrary(); $('#library-dialog').showModal(); $('#library-search').focus(); },
+  help: () => $('#help-dialog').showModal(),
+  library: () => library.open(),
   theme: () => {
     const next = isDark() ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     store.set('cf-theme', next);
     update();
   },
-  deselect: () => select(null),
-  'load-first-sample': () => loadCircuit(EXAMPLES[1] || EXAMPLES[0]),
+  deselect: () => select([]),
+  'load-first-sample': () => loadCircuit(EXAMPLES[1] || EXAMPLES[0], 'Load example'),
   learn: () => { showLearn(); $('#learn-dialog').showModal(); },
 };
 document.addEventListener('click', (e) => {
@@ -457,7 +417,7 @@ function exportRender(extra = {}) {
   const p = parseJSON(state.text);
   if (p.errors.length) throw new Error('Fix the JSON errors before exporting.');
   const r = render(p.value, { theme: 'light', bridges: state.bridges, ...extra });
-  if (!r.valid) throw new Error('Fix the circuit errors before exporting.');
+  if (!r.svg) throw new Error(`Fix the circuit errors before exporting${r.errors[0] ? `: ${r.errors[0].message}` : '.'}`);
   return r;
 }
 const baseName = () => slug(state.circuit?.title);
@@ -496,51 +456,6 @@ $$('[data-api]').forEach((b) => b.addEventListener('click', () => {
   $('#api-out').textContent = `HTTP ${out.status}\n${body}`;
 }));
 
-// ---------------------------------------------------------------- component library
-let libraryBuilt = false;
-function buildLibrary() {
-  if (libraryBuilt) return;
-  libraryBuilt = true;
-  const body = $('#library-body');
-  const cats = { passive: 'Passive', semiconductor: 'Semiconductor', analog: 'Analog', digital: 'Digital', ic: 'IC / MCU', power: 'Power & connection' };
-  const byCat = {};
-  for (const t of listTypes()) (byCat[t.category] ||= []).push(t);
-  for (const [cat, label] of Object.entries(cats)) {
-    if (!byCat[cat]) continue;
-    const sec = document.createElement('section');
-    sec.className = 'lib-cat';
-    sec.innerHTML = `<h3>${label}</h3><div class="lib-grid"></div>`;
-    for (const t of byCat[cat]) {
-      const sym = resolveSymbol({ type: t.type });
-      const b = document.createElement('button');
-      b.className = 'lib-item';
-      b.dataset.search = [t.type, t.name, ...t.aliases].join(' ').toLowerCase();
-      b.title = `Pins: ${sym.pinOrder.join(', ')}`;
-      const preview = sym.svgBody
-        ? `<svg viewBox="-4 -4 ${sym.width + 8} ${sym.height + 8}" width="${Math.min(120, sym.width + 8)}" height="52">${sym.svgBody}</svg>`
-        : `<svg viewBox="0 0 60 20" width="60" height="52"><text x="30" y="14" text-anchor="middle" font-size="10" fill="currentColor">${t.type === 'junction' ? '●' : 'NET'}</text></svg>`;
-      b.innerHTML = `${preview}<span class="n"></span><span class="t"></span>`;
-      b.querySelector('.n').textContent = t.name;
-      b.querySelector('.t').textContent = t.type;
-      b.addEventListener('click', () => {
-        if (!state.circuit) return toast('Fix the JSON syntax error first.', true);
-        const { circuit, id } = addComponent(state.circuit, t.type);
-        $('#library-dialog').close();
-        setCircuit(circuit);
-        select(id);
-        toast(`Added ${id}. Connect it in "connections" (pins: ${sym.pinOrder.join(', ')})`);
-      });
-      sec.lastChild.append(b);
-    }
-    body.append(sec);
-  }
-}
-$('#library-search').addEventListener('input', (e) => {
-  const q = e.target.value.trim().toLowerCase();
-  $$('.lib-item').forEach((b) => (b.hidden = q && !b.dataset.search.includes(q)));
-  $$('.lib-cat').forEach((s) => (s.hidden = !$$('.lib-item', s).some((b) => !b.hidden)));
-});
-
 // ---------------------------------------------------------------- learn dialog
 function showLearn() {
   const info = explainCircuit(state.circuit || {}, state.findings || []);
@@ -549,8 +464,8 @@ function showLearn() {
     + (c.purpose ? `<p>${esc(c.purpose)}</p>` : '')
     + (c.explanation ? `<p>${esc(c.explanation)}</p>` : '')
     + (c.formulas.length ? `<p class="formula">${c.formulas.map(esc).join('<br>')}</p>` : '')
-    + (c.truthTable ? `<table class="tt"><tr>${c.truthTable.inputs.map((i) => `<th>${esc(i)}</th>`).join('')}<th>Y</th></tr>`
-        + c.truthTable.rows.map((r) => `<tr>${r.map((v) => `<td>${v}</td>`).join('')}</tr>`).join('') + '</table>' : '')
+    + (c.truthTable ? `<table class="tt"><tr>${c.truthTable.inputs.map((i) => `<th>${esc(i)}</th>`).join('')}${(c.truthTable.outputs || ['Y']).map((o) => `<th>${esc(o)}</th>`).join('')}</tr>`
+        + c.truthTable.rows.map((r) => `<tr>${r.map((v) => `<td>${esc(v)}</td>`).join('')}</tr>`).join('') + '</table>' : '')
     + list('Common mistakes', c.mistakes)
     + `<p class="pins">Pins: ${c.pins.map((p) => `<code>${esc(p.name)}</code> <span>${esc(p.electrical)}</span>`).join(' · ')}</p>`
     + '</details>').join('');
@@ -602,12 +517,13 @@ function toast(msg, isError = false) {
   t.classList.toggle('error', isError);
   t.hidden = false;
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => (t.hidden = true), isError ? 4000 : 2200);
+  toastTimer = setTimeout(() => (t.hidden = true), isError ? 4500 : 2400);
 }
 
 // ---------------------------------------------------------------- boot
 canvasEl.classList.toggle('grid-on', state.grid);
 const initial = store.get('cf-last');
-if (initial && initial.trim()) setText(initial, { fit: true });
-else setCircuit(EXAMPLES[1] || EXAMPLES[0], { fit: true });
+const first = initial && initial.trim() ? initial : formatJSON(EXAMPLES[1] || EXAMPLES[0]) + '\n';
+history.reset(first, { label: 'Open', selection: [] });
+setText(first, { record: false, fit: true });
 syncToolbar();
