@@ -1,0 +1,32 @@
+{
+  "type": "keypad",
+  "name": "Matrix keypad (4×4)",
+  "category": "connector",
+  "kind": "box",
+  "label": "KEYPAD",
+  "pins": {
+    "left": [
+      "R1",
+      "R2",
+      "R3",
+      "R4"
+    ],
+    "right": [
+      "C1",
+      "C2",
+      "C3",
+      "C4"
+    ]
+  },
+  "prefix": "KP",
+  "io": "passive",
+  "typeAliases": [
+    "keypad_4x4",
+    "matrix_keypad"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

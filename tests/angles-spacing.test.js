@@ -126,8 +126,10 @@ test('the optimizer keeps its best attempt, stops when clean and leaves pinned v
     const info = buildScene(circuit).scene.layoutInfo;
     const scores = info.history.map((h) => h.score);
     assert.equal(info.score, Math.min(...scores), `${name}: best attempt kept`);
-    if (info.history[0].clean) assert.equal(info.attempts, 1, `${name}: a clean first attempt is final`);
-    assert.ok(info.attempts <= 4, `${name}: bounded`);
+    // a clean sheet is never re-laid-out with wider gaps (the standing-part variant is a separate comparison)
+    const widened = info.history.filter((h) => !h.verticalFlex);
+    if (info.history[0].clean) assert.equal(widened.length, 1, `${name}: a clean first attempt is final`);
+    assert.ok(info.attempts <= 5, `${name}: bounded`);
   }
   const busy = load('26-rgb-seven-segment.json');
   const pinned = buildScene({ ...busy, layout: { wireGap: 16, labelGap: 6 } }).scene.layoutInfo;

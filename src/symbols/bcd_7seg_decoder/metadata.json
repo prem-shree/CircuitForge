@@ -1,0 +1,67 @@
+{
+  "type": "bcd_7seg_decoder",
+  "name": "BCD to 7-segment decoder",
+  "category": "digital",
+  "kind": "box",
+  "label": "BCD-7SEG",
+  "pins": {
+    "left": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "~LT",
+      "~BI"
+    ],
+    "right": [
+      "OA",
+      "OB",
+      "OC",
+      "OD",
+      "OE",
+      "OF",
+      "OG"
+    ],
+    "top": [
+      "VCC"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "lt": "~LT",
+    "bi": "~BI",
+    "lamp_test": "~LT",
+    "blanking": "~BI",
+    "vdd": "VCC",
+    "vss": "GND"
+  },
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "~LT": "in",
+    "~BI": "in"
+  },
+  "required": [
+    "A",
+    "B",
+    "C",
+    "D",
+    "VCC",
+    "GND"
+  ],
+  "typeAliases": [
+    "7447",
+    "7448",
+    "cd4511",
+    "74hc4511",
+    "seven_segment_decoder"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

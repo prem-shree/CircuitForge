@@ -1,0 +1,52 @@
+{
+  "type": "rtc",
+  "name": "Real-time clock",
+  "category": "ic",
+  "kind": "box",
+  "label": "RTC",
+  "pins": {
+    "left": [
+      "SDA",
+      "SCL",
+      "~RST"
+    ],
+    "right": [
+      "SQW",
+      "32K"
+    ],
+    "top": [
+      "VCC",
+      "VBAT"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "VBAT": "power_in",
+    "GND": "power_in",
+    "SDA": "open_drain",
+    "SCL": "in",
+    "~RST": "in",
+    "SQW": "out",
+    "32K": "out"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "SDA",
+    "SCL"
+  ],
+  "typeAliases": [
+    "ds3231",
+    "ds1307",
+    "real_time_clock"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

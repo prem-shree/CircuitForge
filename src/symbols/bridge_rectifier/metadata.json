@@ -1,0 +1,73 @@
+{
+  "type": "bridge_rectifier",
+  "name": "Bridge rectifier",
+  "category": "semiconductor",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "AC1": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "passive"
+    },
+    "AC2": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "passive"
+    },
+    "POS": {
+      "x": 30,
+      "y": 0,
+      "dir": "up",
+      "io": "passive"
+    },
+    "NEG": {
+      "x": 30,
+      "y": 60,
+      "dir": "down",
+      "io": "passive"
+    }
+  },
+  "aliases": {
+    "1": "AC1",
+    "2": "AC2",
+    "3": "POS",
+    "4": "NEG",
+    "~1": "AC1",
+    "~2": "AC2",
+    "ac": "AC1",
+    "+": "POS",
+    "-": "NEG",
+    "plus": "POS",
+    "minus": "NEG",
+    "dc+": "POS",
+    "dc-": "NEG"
+  },
+  "body": {
+    "x": 6,
+    "y": 6,
+    "w": 48,
+    "h": 48
+  },
+  "prefix": "BR",
+  "labels": "topright",
+  "required": [
+    "AC1",
+    "AC2",
+    "POS",
+    "NEG"
+  ],
+  "typeAliases": [
+    "bridge",
+    "rectifier_bridge",
+    "full_wave_bridge"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

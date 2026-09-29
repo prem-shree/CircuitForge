@@ -1,0 +1,38 @@
+{
+  "title": "Adjustable Bench Supply (Bridge + LM317)",
+  "description": "A bridge rectifier and reservoir capacitor feed an LM317-style adjustable regulator; two resistors set the output voltage.",
+  "education": {
+    "summary": "The regulator holds its output 1.25 V above the ADJ pin. R1 and R2 form a divider from OUT to ADJ to ground, so the ratio R2/R1 sets the output voltage.",
+    "objectives": [
+      "Follow AC through a bridge rectifier to a smoothed DC rail",
+      "Calculate the output voltage of an adjustable regulator",
+      "Explain why the input must stay above the output (dropout)"
+    ],
+    "theory": "Vout = 1.25 × (1 + R2 / R1) + Iadj × R2. With R1 = 240 Ω and R2 = 720 Ω the output is 5 V. The unregulated input must exceed the output by about 3 V.",
+    "questions": [
+      "What output voltage does R2 = 1.2 kΩ give with R1 = 240 Ω?",
+      "What happens to the output if R2 is replaced by a short?",
+      "Why is C2 placed at the input of the regulator and C3 at the output?"
+    ],
+    "experiments": ["Replace R2 with a 2 kΩ potentiometer and plot Vout against wiper position."]
+  },
+  "components": [
+    { "id": "V1", "type": "ac_source", "value": "12V 50Hz" },
+    { "id": "BR1", "type": "bridge_rectifier", "value": "DB107" },
+    { "id": "C1", "type": "capacitor_polarized", "value": "2200µF" },
+    { "id": "U1", "type": "adjustable_regulator", "value": "LM317" },
+    { "id": "R1", "type": "resistor", "value": "240Ω" },
+    { "id": "R2", "type": "resistor", "value": "720Ω" },
+    { "id": "C2", "type": "capacitor_polarized", "value": "10µF" },
+    { "id": "RL", "type": "resistor", "value": "100Ω" },
+    { "id": "GND", "type": "ground" }
+  ],
+  "connections": [
+    { "pins": ["V1.positive", "BR1.AC1"], "net": "AC1" },
+    { "pins": ["V1.negative", "BR1.AC2"], "net": "AC2" },
+    { "pins": ["BR1.POS", "C1.positive", "U1.IN"], "net": "VRAW" },
+    { "pins": ["U1.OUT", "R1.1", "C2.positive", "RL.1"], "net": "VOUT" },
+    { "pins": ["R1.2", "U1.ADJ", "R2.1"], "net": "ADJ" },
+    ["BR1.NEG", "C1.negative", "R2.2", "C2.negative", "RL.2", "GND"]
+  ]
+}

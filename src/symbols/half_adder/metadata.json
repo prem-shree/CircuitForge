@@ -1,0 +1,35 @@
+{
+  "type": "half_adder",
+  "name": "Half adder",
+  "category": "digital",
+  "kind": "box",
+  "label": "HA",
+  "pins": {
+    "left": [
+      "A",
+      "B"
+    ],
+    "right": [
+      "S",
+      "C"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "sum": "S",
+    "carry": "C",
+    "cout": "C"
+  },
+  "required": [
+    "A",
+    "B"
+  ],
+  "typeAliases": [
+    "ha"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

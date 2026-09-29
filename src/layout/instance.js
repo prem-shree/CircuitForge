@@ -115,15 +115,37 @@ function buildMarkers(inst, nets) {
   const out = [];
   if (!nets) return out;
   // Adjacent pins on the same side going to the same rail share one marker
-  // (e.g. a 555's VCC and RESET): short stubs joined by a bus.
+  // (e.g. a 555's VCC and RESET, or a counter's CLR and EN tied high): short
+  // stubs joined by a bus. Pins that face away from the rail's direction only
+  // share when they sit side by side, so the bus never crosses another pin.
   const groups = new Map();
+  const sideRuns = new Map(); // net|dir -> [{ name, along }]
   for (const [pinName, net] of Object.entries(inst.part.pinNets)) {
     const info = nets.get(net);
     if (!info?.rail) continue;
     const pin = inst.pins[pinName];
-    const key = railFace(info.rail, pin.dir) === pin.dir && info.rail.kind !== 'label' ? net + '|' + pin.dir : pinName;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(pinName);
+    if (railFace(info.rail, pin.dir) === pin.dir && info.rail.kind !== 'label') {
+      const key = net + '|' + pin.dir;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(pinName);
+    } else if (info.rail.kind !== 'label') {
+      const key = net + '|' + pin.dir;
+      if (!sideRuns.has(key)) sideRuns.set(key, []);
+      sideRuns.get(key).push({ name: pinName, along: pin.dir === 'left' || pin.dir === 'right' ? pin.y : pin.x });
+    } else groups.set(pinName, [pinName]);
+  }
+  for (const [key, list] of sideRuns) {
+    list.sort((a, b) => a.along - b.along);
+    let run = [];
+    const flush = () => {
+      if (run.length) groups.set(run.length > 1 ? `${key}|${run[0].name}` : run[0].name, run.map((r) => r.name));
+      run = [];
+    };
+    for (const item of list) {
+      if (run.length && item.along - run[run.length - 1].along > 20) flush();
+      run.push(item);
+    }
+    flush();
   }
   for (const pinNames of groups.values()) {
     const net = inst.part.pinNets[pinNames[0]];

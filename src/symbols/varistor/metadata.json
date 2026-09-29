@@ -1,0 +1,43 @@
+{
+  "type": "varistor",
+  "name": "Varistor (MOV)",
+  "category": "passive",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "1": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "passive"
+    },
+    "2": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "passive"
+    }
+  },
+  "aliases": {
+    "a": "1",
+    "b": "2"
+  },
+  "body": {
+    "x": 12,
+    "y": 14,
+    "w": 36,
+    "h": 32
+  },
+  "prefix": "MOV",
+  "typeAliases": [
+    "mov",
+    "vdr",
+    "metal_oxide_varistor"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

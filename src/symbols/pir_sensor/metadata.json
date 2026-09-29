@@ -1,0 +1,39 @@
+{
+  "type": "pir_sensor",
+  "name": "PIR motion sensor",
+  "category": "sensor",
+  "kind": "box",
+  "label": "PIR",
+  "pins": {
+    "left": [
+      "VCC"
+    ],
+    "right": [
+      "OUT"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "OUT": "out"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "OUT"
+  ],
+  "typeAliases": [
+    "pir",
+    "motion_sensor",
+    "hc_sr501"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

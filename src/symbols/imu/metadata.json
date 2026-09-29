@@ -1,0 +1,47 @@
+{
+  "type": "imu",
+  "name": "Motion sensor (IMU)",
+  "category": "sensor",
+  "kind": "box",
+  "label": "IMU",
+  "pins": {
+    "left": [
+      "VCC",
+      "SDA",
+      "SCL",
+      "AD0"
+    ],
+    "right": [
+      "INT"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "SDA": "open_drain",
+    "SCL": "in",
+    "AD0": "in",
+    "INT": "out"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "SDA",
+    "SCL"
+  ],
+  "typeAliases": [
+    "mpu6050",
+    "accelerometer",
+    "gyroscope",
+    "imu_sensor"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

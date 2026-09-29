@@ -5,6 +5,14 @@ import { overlaps, inflate, segHitsPoly, rectHitsPoly } from '../utils/geometry.
 
 const rectPoly = (r) => [{ x: r.x, y: r.y }, { x: r.x + r.w, y: r.y }, { x: r.x + r.w, y: r.y + r.h }, { x: r.x, y: r.y + r.h }];
 
+// Exact segment-vs-rectangle test, skipped when the bounding boxes are apart
+// (which is nearly always: a label touches a handful of the sheet's wires).
+const hitsRect = (seg, r, poly) => {
+  if (Math.max(seg.x1, seg.x2) < r.x || Math.min(seg.x1, seg.x2) > r.x + r.w) return false;
+  if (Math.max(seg.y1, seg.y2) < r.y || Math.min(seg.y1, seg.y2) > r.y + r.h) return false;
+  return segHitsPoly(seg, poly);
+};
+
 export function placeLabels(instances, routing) {
   const insts = [...instances.values()];
   const segs = [];
@@ -23,7 +31,7 @@ export function placeLabels(instances, routing) {
     for (const l of labels) {
       const b = inflate(l.box, 1);
       const bp = rectPoly(b);
-      for (const seg of segs) if (segHitsPoly(seg, bp)) s += 3;
+      for (const seg of segs) if (hitsRect(seg, b, bp)) s += 3;
       for (const J of insts) {
         if (hitsBody(b, J)) s += J === I ? 5 : 4;
         for (const m of J.markers) if (overlaps(b, m.bbox)) s += 3;
@@ -55,7 +63,7 @@ export function labelConflicts(instances, routing) {
     for (const l of I.labelsFinal || I.labels) {
       const b = inflate(l.box, -1);
       const bp = rectPoly(b);
-      if (segs.some((s) => segHitsPoly(s, bp)) || insts.some((J) => J !== I && (J.rot % 90 === 0 ? overlaps(b, J.body) : rectHitsPoly(b, J.poly)))) {
+      if (segs.some((s) => hitsRect(s, b, bp)) || insts.some((J) => J !== I && (J.rot % 90 === 0 ? overlaps(b, J.body) : rectHitsPoly(b, J.poly)))) {
         out.push({ comp: I.id, text: l.text, x: l.box.x + l.box.w / 2, y: l.box.y + l.box.h / 2 });
       }
     }

@@ -1,0 +1,48 @@
+{
+  "type": "nor4",
+  "name": "4-input NOR gate",
+  "category": "digital",
+  "kind": "box",
+  "label": "≥1",
+  "pins": {
+    "left": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "right": [
+      "~Y"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "1": "A",
+    "2": "B",
+    "3": "C",
+    "4": "D",
+    "5": "~Y",
+    "in1": "A",
+    "in2": "B",
+    "in3": "C",
+    "in4": "D",
+    "out": "~Y",
+    "output": "~Y",
+    "q": "~Y"
+  },
+  "required": [
+    "A",
+    "B",
+    "C",
+    "D"
+  ],
+  "typeAliases": [
+    "nor_4",
+    "nor4_gate"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

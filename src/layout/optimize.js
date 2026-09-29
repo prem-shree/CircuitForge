@@ -50,14 +50,34 @@ export function measureLayout(placement, routing) {
   };
 }
 
-function attempt(nl, circuit, cfg, extraGap) {
-  const placement = layoutCircuit(nl, circuit, { cfg, extraGap });
+// Extra net orders tried on one placement when the first routing leaves a few
+// crossings. A handful can often be routed away; hundreds are forced by the
+// topology and no order removes them, so those sheets are not retried.
+const EXTRA_ORDERS = 3;
+const MAX_AVOIDABLE_CROSSINGS = 10;
+
+function attempt(nl, circuit, cfg, extraGap, workLeft, verticalFlex = false) {
+  const placement = layoutCircuit(nl, circuit, { cfg, extraGap, verticalFlex });
   // choose label spots first so the router keeps wires off them, then make
   // the final choice once the wires are known
   placeLabels(placement.instances, NO_WIRES);
-  const routing = routeCircuit(nl, placement.instances);
-  placeLabels(placement.instances, routing);
-  return { placement, routing, cfg, extraGap, metrics: measureLayout(placement, routing) };
+  const route = (seed) => {
+    const routing = routeCircuit(nl, placement.instances, { seed });
+    placeLabels(placement.instances, routing);
+    return { routing, metrics: measureLayout(placement, routing) };
+  };
+  let best = route(0), spent = best.routing.work || 0, tried = 1;
+  const settled = (m) => (m.clean && !m.crossings) || m.crossings > MAX_AVOIDABLE_CROSSINGS;
+  for (let seed = 1; seed <= EXTRA_ORDERS && !settled(best.metrics) && spent + (best.routing.work || 0) <= workLeft; seed++) {
+    const alt = route(seed);
+    spent += alt.routing.work || 0;
+    tried++;
+    if (alt.metrics.score < best.metrics.score) best = alt;
+  }
+  // the last order tried left its labels behind; restore the winner's
+  placeLabels(placement.instances, best.routing);
+  best.metrics = measureLayout(placement, best.routing);
+  return { placement, routing: best.routing, cfg, extraGap, metrics: best.metrics, work: spent, orders: tried, verticalFlex };
 }
 
 // Map each problem spot to the column gap it sits in and widen that gap; a
@@ -108,19 +128,33 @@ export function planLayout(nl, circuit = {}, opts = {}) {
   const base = normalizeLayout(circuit, layoutStats(nl));
   // nothing to optimize when every part has a position the user chose
   const auto = nl.parts.some((p) => !p.comp.position);
-  const tries = base.optimize && auto ? MAX_ATTEMPTS : 1;
+  const optimizing = base.optimize && auto;
+  const tries = optimizing ? MAX_ATTEMPTS : 1;
   let cfg = base, extra = [];
-  let best = null, chosen = 0, spent = 0;
+  let best = null, chosen = 0, spent = 0, vertical = false;
   const history = [];
-  for (let i = 0; i < tries; i++) {
-    const a = attempt(nl, circuit, cfg, extra);
+  const record = (a) => {
     const { problems, ...summary } = a.metrics;
-    history.push({ ...summary, componentGap: cfg.componentGap, wireGap: cfg.wireGap, labelGap: cfg.labelGap, extraGap: extra.filter(Boolean).length });
-    if (!best || a.metrics.score < best.metrics.score) { best = a; chosen = i; }
-    if (a.metrics.clean) break;
+    history.push({ ...summary, componentGap: a.cfg.componentGap, wireGap: a.cfg.wireGap, labelGap: a.cfg.labelGap, extraGap: (a.extraGap || []).filter(Boolean).length, ...(a.verticalFlex ? { verticalFlex: true } : {}) });
+    if (!best || a.metrics.score < best.metrics.score) { best = a; chosen = history.length - 1; }
+  };
+  for (let i = 0; i < tries; i++) {
+    let a = attempt(nl, circuit, cfg, extra, budget - spent, vertical);
+    record(a);
+    spent += a.work;
+    // Parts that bridge two placed nets can also be laid out standing up. That is
+    // a different sheet, not a tweak, so lay it out too and keep the better one.
+    if (optimizing && i === 0 && a.placement.flex.eligible && spent + a.work <= budget) {
+      const v = attempt(nl, circuit, cfg, extra, budget - spent, true);
+      if (v.placement.flex.switched) {
+        record(v);
+        spent += v.work;
+        if (v.metrics.score < a.metrics.score) { a = v; vertical = true; }
+      }
+    }
+    if (best.metrics.clean) break;
     // another attempt costs about as much as this one did
-    spent += a.routing.work || 0;
-    if (spent + (a.routing.work || 0) > budget) break;
+    if (spent + a.work > budget) break;
     const next = congestionFix(a, base);
     if (!next) break;
     cfg = next.cfg;

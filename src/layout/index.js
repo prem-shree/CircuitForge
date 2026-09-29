@@ -18,13 +18,16 @@ import { normalizeLayout } from './config.js';
 export const layoutStats = (nl) => ({ parts: nl.parts.length, nets: nl.nets.size });
 
 // opts.cfg: resolved spacing (from optimize.js); opts.extraGap: extra room per
-// column boundary, added where a previous attempt found congested wiring.
+// column boundary, added where a previous attempt found congested wiring;
+// opts.verticalFlex: let parts that bridge two placed nets stand up when that
+// shortens the wiring (the optimizer lays out both ways and keeps the better sheet).
 export function layoutCircuit(nl, circuit = {}, opts = {}) {
   const cfg = opts.cfg || normalizeLayout(circuit, layoutStats(nl));
   const COL_GAP = cfg.componentGap;
   const CLEAR = cfg.wireGap;
   const STEP = cfg.grid;
   const { parts, nets } = nl;
+  let flexEligible = 0, flexSwitched = 0;
   for (const p of parts) delete p.cluster;
   const byId = new Map(parts.map((p) => [p.id, p]));
   const railKind = (n) => (n ? nets.get(n)?.rail?.kind : undefined);
@@ -305,6 +308,7 @@ export function layoutCircuit(nl, circuit = {}, opts = {}) {
       const aIsFirst = anchor === s.pinOrder[0];
       rot = aIsFirst !== fromRight ? 0 : 180;
     }
+    const tryPlace = (rot, mirror) => {
     const T = trial(p, rot, mirror);
     const cands = [];
     if (anchor) {
@@ -371,6 +375,39 @@ export function layoutCircuit(nl, circuit = {}, opts = {}) {
         chosen = at(p, bx, maxY + 60 - T.extent.y, rot, mirror);
       }
     }
+    return chosen;
+    };
+    let chosen = tryPlace(rot, mirror);
+
+    // A two-terminal part that bridges two nets already on the sheet may read
+    // better standing up (say a feedback or sense resistor between a regulator's
+    // output and its adjust pin). Keep that only for a clear saving in wire
+    // length; ties keep the horizontal default.
+    if (o.flex && s.twoTerminal && anchors.length === 2 && anchors.every((pin) => signal(p.pinNets[pin]))) flexEligible++;
+    if (opts.verticalFlex && o.flex && s.twoTerminal && anchors.length === 2 && anchors.every((pin) => signal(p.pinNets[pin]))) {
+      const wire = (I) => {
+        let total = 0;
+        for (const pin of s.pinOrder) {
+          const targets = nets.get(p.pinNets[pin]).pins.filter((e) => e.comp !== p.id && inst.has(e.comp)).map((e) => inst.get(e.comp).pins[e.pin]);
+          if (!targets.length) continue;
+          const me = I.pins[pin], d = DIRS[me.dir];
+          let best = Infinity;
+          for (const t of targets) {
+            const len = Math.abs(t.x - me.x) + Math.abs(t.y - me.y);
+            // a target behind the pin means the wire must turn back on itself
+            best = Math.min(best, len + ((t.x - me.x) * d.x + (t.y - me.y) * d.y < 0 ? 30 : 0));
+          }
+          total += best;
+        }
+        return total;
+      };
+      let bestCost = wire(chosen);
+      for (const r of [90, 270]) {
+        const alt = tryPlace(r, mirror);
+        const c = wire(alt) + 20;
+        if (c < bestCost) { bestCost = c; chosen = alt; flexSwitched++; }
+      }
+    }
     if (!anchor) cursor[L] = chosen.extent.y + chosen.extent.h + CLEAR + 20;
     commit(chosen);
     const isl = islandOf.get(p.id);
@@ -382,7 +419,7 @@ export function layoutCircuit(nl, circuit = {}, opts = {}) {
   // sit off-grid by design; only their pin tips are on the grid)
   const remake = (I, dx, dy) => makeInstance(I.part, I.x + dx, I.y + dy, I.rot, I.mirror, nets, cfg);
   packIslands(inst, islandOf, remake, cfg);
-  return { instances: inst, orient, layers: layer, islands: islandOf, config: cfg, bridges: clusters.length };
+  return { instances: inst, orient, layers: layer, islands: islandOf, config: cfg, bridges: clusters.length, flex: { eligible: flexEligible, switched: flexSwitched } };
 }
 
 // Sub-circuits connected only through rails (a decoupling cap, a divider on the

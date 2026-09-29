@@ -223,8 +223,9 @@ function renderExtras(scene, th) {
   return items.length ? `<g id="notes">${items.join('')}</g>` : '';
 }
 
+// stroke="none" so text placed inside a stroked group (the rail markers) is not drawn with the wire's outline
 function textEl(l, fill, weight) {
-  return `<text x="${n(l.x)}" y="${n(l.y)}" font-size="${l.size}" text-anchor="${l.anchor}" fill="${fill}"${weight !== 'normal' ? ` font-weight="${weight}"` : ''}>${esc(l.text)}</text>`;
+  return `<text x="${n(l.x)}" y="${n(l.y)}" font-size="${l.size}" text-anchor="${l.anchor}" fill="${fill}" stroke="none"${weight !== 'normal' ? ` font-weight="${weight}"` : ''}>${esc(l.text)}</text>`;
 }
 
 const R = 4.5; // bridge radius

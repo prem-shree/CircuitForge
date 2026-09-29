@@ -28,7 +28,10 @@ export const MAX_CELLS = 1500000;
 // so on an extremely dense sheet the last, longest ones get direct wires.
 export const MAX_WORK = 1e7;
 
-export function routeCircuit(nl, instances, { maxWork = MAX_WORK } = {}) {
+// `seed` reorders the nets a little (shortest first still, roughly). Which net
+// claims a corridor first decides who has to cross whom, so a second order is
+// worth trying when the first leaves crossings behind. Seed 0 is the default.
+export function routeCircuit(nl, instances, { maxWork = MAX_WORK, seed = 0 } = {}) {
   const insts = [...instances.values()];
   let bounds = null;
   for (const I of insts) bounds = unionRect(bounds, I.extent);
@@ -291,7 +294,10 @@ export function routeCircuit(nl, instances, { maxWork = MAX_WORK } = {}) {
   }
   const pinCell = (ni, e) => routed[ni].pins.find((p) => p.comp === e.comp && p.pin === e.pin);
 
-  const order = routed.map((_, i) => i).sort((a, b) => span(routed[a].pins) - span(routed[b].pins));
+  let jitter = (seed * 2654435761) >>> 0;
+  const noise = () => (jitter = (Math.imul(jitter, 1664525) + 1013904223) >>> 0) / 4294967296;
+  const order = routed.map((_, i) => [span(routed[i].pins) * (seed ? 0.6 + 0.8 * noise() : 1), i])
+    .sort((a, b) => a[0] - b[0] || a[1] - b[1]).map((x) => x[1]);
   for (const ni of order) {
     const net = routed[ni];
     const pins = net.pins.filter((p) => p.cell >= 0);

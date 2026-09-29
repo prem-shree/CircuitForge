@@ -1,0 +1,57 @@
+{
+  "type": "scr",
+  "name": "SCR (thyristor)",
+  "category": "semiconductor",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "anode": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "cathode": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "out"
+    },
+    "gate": {
+      "x": 30,
+      "y": 60,
+      "dir": "down",
+      "io": "in"
+    }
+  },
+  "aliases": {
+    "1": "anode",
+    "2": "cathode",
+    "3": "gate",
+    "a": "anode",
+    "k": "cathode",
+    "g": "gate"
+  },
+  "body": {
+    "x": 12,
+    "y": 14,
+    "w": 30,
+    "h": 34
+  },
+  "prefix": "SCR",
+  "required": [
+    "anode",
+    "cathode",
+    "gate"
+  ],
+  "typeAliases": [
+    "thyristor",
+    "scr_thyristor"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

@@ -216,7 +216,7 @@ export function checkElectrical({ circuit = {}, netlist, routing = null }) {
       }
     }
 
-    if (['npn', 'pnp', 'nmos', 'pmos', 'jfet', 'jfet_p', 'phototransistor'].includes(t)) {
+    if (['npn', 'pnp', 'nmos', 'pmos', 'jfet', 'jfet_p', 'phototransistor', 'igbt'].includes(t)) {
       const ctrl = p.sym.pins.B ? 'B' : 'G';
       const [x, y] = p.sym.pins.C ? ['C', 'E'] : ['D', 'S'];
       if (p.pinNets[x] && p.pinNets[x] === p.pinNets[y]) {
@@ -243,8 +243,9 @@ export function checkElectrical({ circuit = {}, netlist, routing = null }) {
       }
     }
 
-    if (t === 'voltage_regulator' || t === 'ldo') {
-      const vin = p.pinNets.IN, vout = p.pinNets.OUT, gnd = p.pinNets.GND;
+    if (t === 'voltage_regulator' || t === 'ldo' || t === 'adjustable_regulator') {
+      // an adjustable part references its ADJ pin (fed from a divider), not ground
+      const vin = p.pinNets.IN, vout = p.pinNets.OUT, gnd = t === 'adjustable_regulator' ? p.pinNets.ADJ : p.pinNets.GND;
       if (vin && vin === vout) {
         add('REGULATOR_IO', `${nameOf(p)} has IN and OUT on the same net, which bypasses the regulator.`, { component: p.id });
       }
@@ -252,7 +253,11 @@ export function checkElectrical({ circuit = {}, netlist, routing = null }) {
         add('REGULATOR_IO', `${nameOf(p)} has its input on ground.`, { component: p.id, hint: 'IN takes the unregulated higher voltage; OUT delivers the regulated one.' });
       }
       if (!gnd) {
-        add('REGULATOR_IO', `${nameOf(p)} has no ground connection, so it has no reference to regulate against.`, { component: p.id, pin: 'GND' });
+        const adj = t === 'adjustable_regulator';
+        add('REGULATOR_IO', adj ? `${nameOf(p)} has nothing on its ADJ pin, so its output voltage is undefined.` : `${nameOf(p)} has no ground connection, so it has no reference to regulate against.`, {
+          component: p.id, pin: adj ? 'ADJ' : 'GND',
+          ...(adj ? { hint: 'Connect ADJ to the junction of a divider between OUT and ground: Vout = 1.25 × (1 + R2 / R1).' } : {}),
+        });
       }
     }
   }

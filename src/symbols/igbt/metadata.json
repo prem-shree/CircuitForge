@@ -1,0 +1,56 @@
+{
+  "type": "igbt",
+  "name": "IGBT (N-channel)",
+  "category": "semiconductor",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "G": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "in"
+    },
+    "C": {
+      "x": 40,
+      "y": 0,
+      "dir": "up"
+    },
+    "E": {
+      "x": 40,
+      "y": 60,
+      "dir": "down"
+    }
+  },
+  "aliases": {
+    "1": "G",
+    "2": "C",
+    "3": "E",
+    "gate": "G",
+    "collector": "C",
+    "emitter": "E"
+  },
+  "body": {
+    "x": 8,
+    "y": 10,
+    "w": 38,
+    "h": 40
+  },
+  "prefix": "Q",
+  "labels": "right",
+  "required": [
+    "G",
+    "C",
+    "E"
+  ],
+  "typeAliases": [
+    "igbt_n",
+    "insulated_gate_bipolar_transistor"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

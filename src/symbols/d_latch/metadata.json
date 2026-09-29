@@ -1,0 +1,39 @@
+{
+  "type": "d_latch",
+  "name": "D latch",
+  "category": "digital",
+  "kind": "box",
+  "label": "D LATCH",
+  "pins": {
+    "left": [
+      "D",
+      "EN"
+    ],
+    "right": [
+      "Q",
+      "QN"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "enable": "EN",
+    "g": "EN",
+    "gate": "EN",
+    "q̄": "QN",
+    "qbar": "QN",
+    "nq": "QN"
+  },
+  "required": [
+    "D",
+    "EN"
+  ],
+  "typeAliases": [
+    "latch",
+    "transparent_latch"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

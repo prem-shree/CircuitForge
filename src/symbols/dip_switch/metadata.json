@@ -1,0 +1,32 @@
+{
+  "type": "dip_switch",
+  "name": "DIP switch (4 poles)",
+  "category": "passive",
+  "kind": "box",
+  "label": "DIP",
+  "pins": {
+    "left": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ],
+    "right": [
+      "8",
+      "7",
+      "6",
+      "5"
+    ]
+  },
+  "prefix": "SW",
+  "io": "passive",
+  "typeAliases": [
+    "dipswitch",
+    "dip"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

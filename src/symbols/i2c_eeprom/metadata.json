@@ -1,0 +1,53 @@
+{
+  "type": "i2c_eeprom",
+  "name": "I²C EEPROM",
+  "category": "ic",
+  "kind": "box",
+  "label": "EEPROM",
+  "pins": {
+    "left": [
+      "A0",
+      "A1",
+      "A2",
+      "WP"
+    ],
+    "right": [
+      "SDA",
+      "SCL"
+    ],
+    "top": [
+      "VCC"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "SDA": "open_drain",
+    "SCL": "in",
+    "A0": "in",
+    "A1": "in",
+    "A2": "in",
+    "WP": "in"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "SDA",
+    "SCL"
+  ],
+  "typeAliases": [
+    "eeprom_i2c",
+    "24c256",
+    "24lc256",
+    "at24c256"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

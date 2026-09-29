@@ -1,0 +1,32 @@
+{
+  "type": "power_jack",
+  "name": "DC power jack",
+  "category": "connector",
+  "kind": "box",
+  "label": "DC JACK",
+  "pins": {
+    "right": [
+      "TIP",
+      "SLEEVE"
+    ]
+  },
+  "prefix": "J",
+  "io": "passive",
+  "aliases": {
+    "1": "TIP",
+    "2": "SLEEVE",
+    "positive": "TIP",
+    "negative": "SLEEVE",
+    "+": "TIP",
+    "-": "SLEEVE"
+  },
+  "typeAliases": [
+    "dc_jack",
+    "barrel_jack"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

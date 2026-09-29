@@ -1,0 +1,44 @@
+{
+  "type": "and3",
+  "name": "3-input AND gate",
+  "category": "digital",
+  "kind": "box",
+  "label": "&",
+  "pins": {
+    "left": [
+      "A",
+      "B",
+      "C"
+    ],
+    "right": [
+      "Y"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "1": "A",
+    "2": "B",
+    "3": "C",
+    "4": "Y",
+    "in1": "A",
+    "in2": "B",
+    "in3": "C",
+    "out": "Y",
+    "output": "Y",
+    "q": "Y"
+  },
+  "required": [
+    "A",
+    "B",
+    "C"
+  ],
+  "typeAliases": [
+    "and_3",
+    "and3_gate"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

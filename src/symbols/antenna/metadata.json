@@ -1,0 +1,32 @@
+{
+  "type": "antenna",
+  "name": "Antenna",
+  "category": "passive",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "1": {
+      "x": 30,
+      "y": 60,
+      "dir": "down",
+      "io": "passive"
+    }
+  },
+  "body": {
+    "x": 14,
+    "y": 4,
+    "w": 32,
+    "h": 22
+  },
+  "prefix": "ANT",
+  "typeAliases": [
+    "ant",
+    "aerial"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

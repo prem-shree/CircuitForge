@@ -1,0 +1,40 @@
+{
+  "type": "humidity_sensor",
+  "name": "Humidity / temperature sensor",
+  "category": "sensor",
+  "kind": "box",
+  "label": "DHT",
+  "pins": {
+    "left": [
+      "VCC"
+    ],
+    "right": [
+      "DATA"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "DATA": "bidirectional"
+  },
+  "required": [
+    "VCC",
+    "GND",
+    "DATA"
+  ],
+  "typeAliases": [
+    "dht11",
+    "dht22",
+    "dht",
+    "temperature_humidity_sensor"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

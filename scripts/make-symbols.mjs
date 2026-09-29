@@ -196,4 +196,109 @@ box('rp2040', 'RP2040-style board', 'board', 'RP2040', {
   pinIO: { ...gpio(['GP0', 'GP1', 'GP2', 'GP3', 'GP4', 'GP5', 'GP6', 'GP7', 'GP8', 'GP9', 'GP10', 'GP16', 'GP17', 'GP25', 'GP26']), '3V3': 'power_out', VSYS: 'power_in', GND: 'power_in', RUN: 'in' },
   required: ['GND'], typeAliases: ['pico', 'raspberry_pi_pico', 'rp2040_board'] });
 
+// ---------------------------------------------------------------- more drawn symbols
+// Two-terminal parts share one frame: leads on y=30, 60 wide.
+const two = (type, name, category, prefix, body, svg, extra = {}) => write(type, {
+  name, category, width: 60, height: 60,
+  pins: { '1': { x: 0, y: 30, dir: 'left', io: 'passive' }, '2': { x: 60, y: 30, dir: 'right', io: 'passive' } },
+  aliases: { a: '1', b: '2' },
+  body, prefix, ...extra,
+}, `<path d="M0 30h12M48 30h12"/>${svg}`);
+
+two('thermistor', 'Thermistor (NTC/PTC)', 'passive', 'RT', { x: 12, y: 14, w: 36, h: 32 },
+  '<rect x="12" y="20" width="36" height="20"/><path d="M10 46h6L44 14"/>', { typeAliases: ['ntc', 'ptc', 'ntc_thermistor', 'ptc_thermistor'] });
+two('varistor', 'Varistor (MOV)', 'passive', 'MOV', { x: 12, y: 14, w: 36, h: 32 },
+  '<rect x="12" y="20" width="36" height="20"/><path d="M16 46 44 14"/>', { typeAliases: ['mov', 'vdr', 'metal_oxide_varistor'] });
+write('tvs_diode', {
+  name: 'TVS diode (bidirectional)', category: 'semiconductor', width: 60, height: 60,
+  pins: { '1': { x: 0, y: 30, dir: 'left', io: 'passive' }, '2': { x: 60, y: 30, dir: 'right', io: 'passive' } },
+  aliases: { a: '1', b: '2' }, body: { x: 12, y: 16, w: 36, h: 28 }, prefix: 'D', typeAliases: ['tvs', 'transient_suppressor', 'suppressor'],
+}, '<path d="M0 30h14M46 30h14M14 18v24l13-12zM46 18v24L33 30zM27 18v24M33 18v24"/>');
+two('microphone', 'Microphone', 'sensor', 'MK', { x: 14, y: 14, w: 32, h: 32 },
+  '<circle cx="30" cy="30" r="14"/><path d="M25 22v16"/>', { typeAliases: ['mic', 'electret_microphone'] });
+
+write('spdt_switch', {
+  name: 'Switch (SPDT)', category: 'passive', width: 60, height: 60,
+  pins: { COM: { x: 0, y: 30, dir: 'left', io: 'passive' }, A: { x: 60, y: 10, dir: 'right', io: 'passive' }, B: { x: 60, y: 50, dir: 'right', io: 'passive' } },
+  aliases: { '1': 'COM', '2': 'A', '3': 'B', common: 'COM', nc: 'A', no: 'B' },
+  body: { x: 8, y: 6, w: 40, h: 48 }, prefix: 'SW', labels: 'right', required: ['COM'],
+  typeAliases: ['spdt', 'switch_spdt', 'toggle_switch', 'changeover_switch'],
+}, '<path d="M0 30h10M46 10h14M46 50h14"/><circle cx="12" cy="30" r="2"/><circle cx="44" cy="10" r="2"/><circle cx="44" cy="50" r="2"/><path d="M14 29 38 15"/>');
+
+write('igbt', {
+  name: 'IGBT (N-channel)', category: 'semiconductor', width: 60, height: 60,
+  pins: { G: { x: 0, y: 30, dir: 'left', io: 'in' }, C: { x: 40, y: 0, dir: 'up' }, E: { x: 40, y: 60, dir: 'down' } },
+  aliases: { gate: 'G', collector: 'C', emitter: 'E', '1': 'G', '2': 'C', '3': 'E' },
+  body: { x: 8, y: 10, w: 38, h: 40 }, prefix: 'Q', labels: 'right', required: ['G', 'C', 'E'], typeAliases: ['igbt_n', 'insulated_gate_bipolar_transistor'],
+}, '<path d="M0 30h10M10 18v24M15 14v32M15 20h25V0M15 40h25v20"/><path d="M33 40l-8-3.5v7z" fill="currentColor" stroke="none"/>');
+
+write('scr', {
+  name: 'SCR (thyristor)', category: 'semiconductor', width: 60, height: 60,
+  pins: { anode: { x: 0, y: 30, dir: 'left', io: 'in' }, cathode: { x: 60, y: 30, dir: 'right', io: 'out' }, gate: { x: 30, y: 60, dir: 'down', io: 'in' } },
+  aliases: { a: 'anode', k: 'cathode', g: 'gate', '1': 'anode', '2': 'cathode', '3': 'gate' },
+  body: { x: 12, y: 14, w: 30, h: 34 }, prefix: 'SCR', required: ['anode', 'cathode', 'gate'], typeAliases: ['thyristor', 'scr_thyristor'],
+}, '<path d="M0 30h14M38 30h22M14 16v28l24-14zM38 16v28M30 60v-6l8-10"/>');
+
+write('triac', {
+  name: 'Triac', category: 'semiconductor', width: 60, height: 60,
+  pins: { MT1: { x: 0, y: 30, dir: 'left', io: 'passive' }, MT2: { x: 60, y: 30, dir: 'right', io: 'passive' }, G: { x: 20, y: 60, dir: 'down', io: 'in' } },
+  aliases: { gate: 'G', '1': 'MT1', '2': 'MT2', '3': 'G', a1: 'MT1', a2: 'MT2' },
+  body: { x: 12, y: 10, w: 36, h: 40 }, prefix: 'TR', required: ['MT1', 'MT2', 'G'], typeAliases: ['bidirectional_thyristor'],
+}, '<path d="M0 30h16M44 30h16M16 14v32M44 14v32M16 14v16l28-8zM44 46V30l-28 8zM20 60v-6l-4-8"/>');
+
+write('bridge_rectifier', {
+  name: 'Bridge rectifier', category: 'semiconductor', width: 60, height: 60,
+  pins: { AC1: { x: 0, y: 30, dir: 'left', io: 'passive' }, AC2: { x: 60, y: 30, dir: 'right', io: 'passive' }, POS: { x: 30, y: 0, dir: 'up', io: 'passive' }, NEG: { x: 30, y: 60, dir: 'down', io: 'passive' } },
+  aliases: { '~1': 'AC1', '~2': 'AC2', ac: 'AC1', '+': 'POS', '-': 'NEG', plus: 'POS', minus: 'NEG', 'dc+': 'POS', 'dc-': 'NEG', '1': 'AC1', '2': 'AC2', '3': 'POS', '4': 'NEG' },
+  body: { x: 6, y: 6, w: 48, h: 48 }, prefix: 'BR', labels: 'topright', required: ['AC1', 'AC2', 'POS', 'NEG'], typeAliases: ['bridge', 'rectifier_bridge', 'full_wave_bridge'],
+}, '<path d="M0 30h6M54 30h6M30 0v6M30 54v6M30 6l24 24-24 24L6 30z"/><g fill="currentColor" stroke="none" font-size="11" text-anchor="middle"><text x="16" y="34">~</text><text x="44" y="34">~</text><text x="30" y="22">+</text><text x="30" y="44">−</text></g>');
+
+write('antenna', {
+  name: 'Antenna', category: 'passive', width: 60, height: 60,
+  pins: { '1': { x: 30, y: 60, dir: 'down', io: 'passive' } },
+  body: { x: 14, y: 4, w: 32, h: 22 }, prefix: 'ANT', typeAliases: ['ant', 'aerial'],
+}, '<path d="M30 60V22M16 6l14 16L44 6"/>');
+
+// ---------------------------------------------------------------- more box parts
+box('dip_switch', 'DIP switch (4 poles)', 'passive', 'DIP', { left: ['1', '2', '3', '4'], right: ['8', '7', '6', '5'] }, { prefix: 'SW', io: 'passive', typeAliases: ['dipswitch', 'dip'] });
+box('adjustable_regulator', 'Adjustable regulator', 'analog', 'ADJ REG', { left: ['IN'], right: ['OUT'], bottom: ['ADJ'] },
+  { prefix: 'U', aliases: { vin: 'IN', vout: 'OUT', adjust: 'ADJ', '1': 'ADJ', '2': 'OUT', '3': 'IN', input: 'IN', output: 'OUT' }, pinIO: { IN: 'power_in', OUT: 'power_out', ADJ: 'passive' }, required: ['IN', 'OUT', 'ADJ'], typeAliases: ['lm317', 'lm337', 'variable_regulator'] });
+box('stepper_motor', 'Stepper motor', 'output_device', 'STEP', { left: ['A1', 'A2'], right: ['B1', 'B2'] },
+  { prefix: 'M', io: 'passive', aliases: { 'a+': 'A1', 'a-': 'A2', 'b+': 'B1', 'b-': 'B2', coil_a1: 'A1', coil_a2: 'A2', coil_b1: 'B1', coil_b2: 'B2' }, required: ['A1', 'A2', 'B1', 'B2'], typeAliases: ['stepper', 'stepper_motor_bipolar'] });
+
+const INPUTS = ['A', 'B', 'C', 'D'];
+const gateAliases = (n, out) => ({ ...Object.fromEntries(INPUTS.slice(0, n).flatMap((c, i) => [[`in${i + 1}`, c], [String(i + 1), c]])), out, output: out, q: out, [String(n + 1)]: out });
+for (const n of [3, 4]) {
+  for (const [name, label, out, title] of [['and', '&', 'Y', 'AND'], ['or', '≥1', 'Y', 'OR'], ['nand', '&', '~Y', 'NAND'], ['nor', '≥1', '~Y', 'NOR']]) {
+    box(`${name}${n}`, `${n}-input ${title} gate`, 'digital', label, { left: INPUTS.slice(0, n), right: [out] },
+      { prefix: 'U', aliases: gateAliases(n, out), required: [...INPUTS.slice(0, n)], typeAliases: [`${name}_${n}`, `${name}${n}_gate`] });
+  }
+}
+box('d_latch', 'D latch', 'digital', 'D LATCH', { left: ['D', 'EN'], right: ['Q', 'QN'] }, { prefix: 'U', aliases: { enable: 'EN', g: 'EN', gate: 'EN', 'q̄': 'QN', qbar: 'QN', nq: 'QN' }, required: ['D', 'EN'], typeAliases: ['latch', 'transparent_latch'] });
+box('half_adder', 'Half adder', 'digital', 'HA', { left: ['A', 'B'], right: ['S', 'C'] }, { prefix: 'U', aliases: { sum: 'S', carry: 'C', cout: 'C' }, required: ['A', 'B'], typeAliases: ['ha'] });
+box('full_adder', 'Full adder', 'digital', 'FA', { left: ['A', 'B', 'CIN'], right: ['S', 'COUT'] }, { prefix: 'U', aliases: { sum: 'S', carry: 'COUT', cin: 'CIN', 'c_in': 'CIN', 'c_out': 'COUT' }, required: ['A', 'B', 'CIN'], typeAliases: ['fa', 'adder'] });
+box('bcd_7seg_decoder', 'BCD to 7-segment decoder', 'digital', 'BCD-7SEG', { left: ['A', 'B', 'C', 'D', '~LT', '~BI'], right: [...'ABCDEFG'].map((c) => 'O' + c), top: ['VCC'], bottom: ['GND'] },
+  { prefix: 'U', aliases: { lt: '~LT', bi: '~BI', lamp_test: '~LT', blanking: '~BI', vdd: 'VCC', vss: 'GND' }, pinIO: { VCC: 'power_in', GND: 'power_in', '~LT': 'in', '~BI': 'in' }, required: ['A', 'B', 'C', 'D', 'VCC', 'GND'], typeAliases: ['7447', '7448', 'cd4511', '74hc4511', 'seven_segment_decoder'] });
+
+box('i2c_eeprom', 'I²C EEPROM', 'ic', 'EEPROM', { left: ['A0', 'A1', 'A2', 'WP'], right: ['SDA', 'SCL'], top: ['VCC'], bottom: ['GND'] },
+  { prefix: 'U', pinIO: { VCC: 'power_in', GND: 'power_in', SDA: 'open_drain', SCL: 'in', A0: 'in', A1: 'in', A2: 'in', WP: 'in' }, required: ['VCC', 'GND', 'SDA', 'SCL'], typeAliases: ['eeprom_i2c', '24c256', '24lc256', 'at24c256'] });
+box('rtc', 'Real-time clock', 'ic', 'RTC', { left: ['SDA', 'SCL', '~RST'], right: ['SQW', '32K'], top: ['VCC', 'VBAT'], bottom: ['GND'] },
+  { prefix: 'U', pinIO: { VCC: 'power_in', VBAT: 'power_in', GND: 'power_in', SDA: 'open_drain', SCL: 'in', '~RST': 'in', SQW: 'out', '32K': 'out' }, required: ['VCC', 'GND', 'SDA', 'SCL'], typeAliases: ['ds3231', 'ds1307', 'real_time_clock'] });
+box('usb_connector', 'USB connector', 'connector', 'USB', { right: ['VBUS', 'D-', 'D+', 'GND'] },
+  { prefix: 'J', io: 'passive', pinIO: { 'D-': 'bidirectional', 'D+': 'bidirectional' }, aliases: { vcc: 'VBUS', '5v': 'VBUS', dm: 'D-', dp: 'D+', '1': 'VBUS', '2': 'D-', '3': 'D+', '4': 'GND' }, typeAliases: ['usb', 'usb_port', 'usb_a', 'usb_micro'] });
+box('power_jack', 'DC power jack', 'connector', 'DC JACK', { right: ['TIP', 'SLEEVE'] },
+  { prefix: 'J', io: 'passive', aliases: { positive: 'TIP', negative: 'SLEEVE', '+': 'TIP', '-': 'SLEEVE', '1': 'TIP', '2': 'SLEEVE' }, typeAliases: ['dc_jack', 'barrel_jack'] });
+box('keypad', 'Matrix keypad (4×4)', 'connector', 'KEYPAD', { left: ['R1', 'R2', 'R3', 'R4'], right: ['C1', 'C2', 'C3', 'C4'] }, { prefix: 'KP', io: 'passive', typeAliases: ['keypad_4x4', 'matrix_keypad'] });
+box('sd_card', 'SD card module', 'ic', 'SD', { left: ['CS', 'MOSI', 'SCK'], right: ['MISO'], top: ['VCC'], bottom: ['GND'] },
+  { prefix: 'U', pinIO: { VCC: 'power_in', GND: 'power_in', CS: 'in', MOSI: 'in', SCK: 'in', MISO: 'out' }, required: ['VCC', 'GND'], typeAliases: ['microsd', 'sdcard', 'sd_module'] });
+
+box('humidity_sensor', 'Humidity / temperature sensor', 'sensor', 'DHT', { left: ['VCC'], right: ['DATA'], bottom: ['GND'] },
+  { prefix: 'U', pinIO: { VCC: 'power_in', GND: 'power_in', DATA: 'bidirectional' }, required: ['VCC', 'GND', 'DATA'], typeAliases: ['dht11', 'dht22', 'dht', 'temperature_humidity_sensor'] });
+box('imu', 'Motion sensor (IMU)', 'sensor', 'IMU', { left: ['VCC', 'SDA', 'SCL', 'AD0'], right: ['INT'], bottom: ['GND'] },
+  { prefix: 'U', pinIO: { VCC: 'power_in', GND: 'power_in', SDA: 'open_drain', SCL: 'in', AD0: 'in', INT: 'out' }, required: ['VCC', 'GND', 'SDA', 'SCL'], typeAliases: ['mpu6050', 'accelerometer', 'gyroscope', 'imu_sensor'] });
+box('pir_sensor', 'PIR motion sensor', 'sensor', 'PIR', { left: ['VCC'], right: ['OUT'], bottom: ['GND'] },
+  { prefix: 'U', pinIO: { VCC: 'power_in', GND: 'power_in', OUT: 'out' }, required: ['VCC', 'GND', 'OUT'], typeAliases: ['pir', 'motion_sensor', 'hc_sr501'] });
+box('bluetooth_module', 'Bluetooth serial module', 'ic', 'BT', { left: ['VCC', 'EN', 'RXD'], right: ['TXD', 'STATE'], bottom: ['GND'] },
+  { prefix: 'U', pinIO: { VCC: 'power_in', GND: 'power_in', EN: 'in', RXD: 'in', TXD: 'out', STATE: 'out' }, required: ['VCC', 'GND'], typeAliases: ['hc05', 'hc_05', 'bluetooth'] });
+
 console.log('generated CircuitForge symbols');

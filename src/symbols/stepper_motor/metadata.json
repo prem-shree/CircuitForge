@@ -1,0 +1,44 @@
+{
+  "type": "stepper_motor",
+  "name": "Stepper motor",
+  "category": "output_device",
+  "kind": "box",
+  "label": "STEP",
+  "pins": {
+    "left": [
+      "A1",
+      "A2"
+    ],
+    "right": [
+      "B1",
+      "B2"
+    ]
+  },
+  "prefix": "M",
+  "io": "passive",
+  "aliases": {
+    "a+": "A1",
+    "a-": "A2",
+    "b+": "B1",
+    "b-": "B2",
+    "coil_a1": "A1",
+    "coil_a2": "A2",
+    "coil_b1": "B1",
+    "coil_b2": "B2"
+  },
+  "required": [
+    "A1",
+    "A2",
+    "B1",
+    "B2"
+  ],
+  "typeAliases": [
+    "stepper",
+    "stepper_motor_bipolar"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "type": "triac",
+  "name": "Triac",
+  "category": "semiconductor",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "MT1": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "passive"
+    },
+    "MT2": {
+      "x": 60,
+      "y": 30,
+      "dir": "right",
+      "io": "passive"
+    },
+    "G": {
+      "x": 20,
+      "y": 60,
+      "dir": "down",
+      "io": "in"
+    }
+  },
+  "aliases": {
+    "1": "MT1",
+    "2": "MT2",
+    "3": "G",
+    "gate": "G",
+    "a1": "MT1",
+    "a2": "MT2"
+  },
+  "body": {
+    "x": 12,
+    "y": 10,
+    "w": 36,
+    "h": 40
+  },
+  "prefix": "TR",
+  "required": [
+    "MT1",
+    "MT2",
+    "G"
+  ],
+  "typeAliases": [
+    "bidirectional_thyristor"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

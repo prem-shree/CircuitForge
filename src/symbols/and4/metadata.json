@@ -1,0 +1,48 @@
+{
+  "type": "and4",
+  "name": "4-input AND gate",
+  "category": "digital",
+  "kind": "box",
+  "label": "&",
+  "pins": {
+    "left": [
+      "A",
+      "B",
+      "C",
+      "D"
+    ],
+    "right": [
+      "Y"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "1": "A",
+    "2": "B",
+    "3": "C",
+    "4": "D",
+    "5": "Y",
+    "in1": "A",
+    "in2": "B",
+    "in3": "C",
+    "in4": "D",
+    "out": "Y",
+    "output": "Y",
+    "q": "Y"
+  },
+  "required": [
+    "A",
+    "B",
+    "C",
+    "D"
+  ],
+  "typeAliases": [
+    "and_4",
+    "and4_gate"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

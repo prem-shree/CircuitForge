@@ -1,0 +1,58 @@
+{
+  "type": "spdt_switch",
+  "name": "Switch (SPDT)",
+  "category": "passive",
+  "width": 60,
+  "height": 60,
+  "pins": {
+    "COM": {
+      "x": 0,
+      "y": 30,
+      "dir": "left",
+      "io": "passive"
+    },
+    "A": {
+      "x": 60,
+      "y": 10,
+      "dir": "right",
+      "io": "passive"
+    },
+    "B": {
+      "x": 60,
+      "y": 50,
+      "dir": "right",
+      "io": "passive"
+    }
+  },
+  "aliases": {
+    "1": "COM",
+    "2": "A",
+    "3": "B",
+    "common": "COM",
+    "nc": "A",
+    "no": "B"
+  },
+  "body": {
+    "x": 8,
+    "y": 6,
+    "w": 40,
+    "h": 48
+  },
+  "prefix": "SW",
+  "labels": "right",
+  "required": [
+    "COM"
+  ],
+  "typeAliases": [
+    "spdt",
+    "switch_spdt",
+    "toggle_switch",
+    "changeover_switch"
+  ],
+  "svg": "symbol.svg",
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

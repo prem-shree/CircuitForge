@@ -1,0 +1,42 @@
+{
+  "type": "usb_connector",
+  "name": "USB connector",
+  "category": "connector",
+  "kind": "box",
+  "label": "USB",
+  "pins": {
+    "right": [
+      "VBUS",
+      "D-",
+      "D+",
+      "GND"
+    ]
+  },
+  "prefix": "J",
+  "io": "passive",
+  "pinIO": {
+    "D-": "bidirectional",
+    "D+": "bidirectional"
+  },
+  "aliases": {
+    "1": "VBUS",
+    "2": "D-",
+    "3": "D+",
+    "4": "GND",
+    "vcc": "VBUS",
+    "5v": "VBUS",
+    "dm": "D-",
+    "dp": "D+"
+  },
+  "typeAliases": [
+    "usb",
+    "usb_port",
+    "usb_a",
+    "usb_micro"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

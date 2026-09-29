@@ -2,8 +2,9 @@
 // mistakes that cost people an afternoon, and what each validation rule means.
 // Circuit JSON can add or override any of this through "education" blocks.
 import { getDef, canonicalType, resolveSymbol } from '../symbol-loader/index.js';
+import { EXTRA_NOTES } from './components-extra.js';
 
-export const COMPONENT_NOTES = {
+const BASE_NOTES = {
   resistor: {
     purpose: 'Limits current and sets voltages.',
     explanation: 'A resistor drops a voltage proportional to the current through it. In series it limits current; in a pair it forms a voltage divider.',
@@ -205,6 +206,8 @@ export const RULE_HELP = {
   INVALID_VALUE: { title: 'Value not understood', why: 'Rules that size resistors, check power ratings or compare voltages need the value as a number. A typo such as "4,7k" or "10kk" hides the part from them.', fix: 'Write the value as a number with an optional SI prefix and unit: 4.7kΩ, 100nF, 12V.' },
   ROUTING_FAILURE: { title: 'Router fell back to a direct wire', why: 'No clean orthogonal path was found, so the wire may cut across the drawing.', fix: 'Increase spacing, or place the parts manually with "position".' },
 };
+
+export const COMPONENT_NOTES = { ...BASE_NOTES, ...EXTRA_NOTES };
 
 const CATEGORY_NOTE = {
   passive: 'Passive parts do not need a supply of their own.',

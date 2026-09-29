@@ -1,0 +1,49 @@
+{
+  "type": "adjustable_regulator",
+  "name": "Adjustable regulator",
+  "category": "analog",
+  "kind": "box",
+  "label": "ADJ REG",
+  "pins": {
+    "left": [
+      "IN"
+    ],
+    "right": [
+      "OUT"
+    ],
+    "bottom": [
+      "ADJ"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "1": "ADJ",
+    "2": "OUT",
+    "3": "IN",
+    "vin": "IN",
+    "vout": "OUT",
+    "adjust": "ADJ",
+    "input": "IN",
+    "output": "OUT"
+  },
+  "pinIO": {
+    "IN": "power_in",
+    "OUT": "power_out",
+    "ADJ": "passive"
+  },
+  "required": [
+    "IN",
+    "OUT",
+    "ADJ"
+  ],
+  "typeAliases": [
+    "lm317",
+    "lm337",
+    "variable_regulator"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

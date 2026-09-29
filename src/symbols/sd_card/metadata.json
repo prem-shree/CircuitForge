@@ -1,0 +1,46 @@
+{
+  "type": "sd_card",
+  "name": "SD card module",
+  "category": "ic",
+  "kind": "box",
+  "label": "SD",
+  "pins": {
+    "left": [
+      "CS",
+      "MOSI",
+      "SCK"
+    ],
+    "right": [
+      "MISO"
+    ],
+    "top": [
+      "VCC"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "CS": "in",
+    "MOSI": "in",
+    "SCK": "in",
+    "MISO": "out"
+  },
+  "required": [
+    "VCC",
+    "GND"
+  ],
+  "typeAliases": [
+    "microsd",
+    "sdcard",
+    "sd_module"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

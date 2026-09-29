@@ -1,0 +1,40 @@
+{
+  "type": "full_adder",
+  "name": "Full adder",
+  "category": "digital",
+  "kind": "box",
+  "label": "FA",
+  "pins": {
+    "left": [
+      "A",
+      "B",
+      "CIN"
+    ],
+    "right": [
+      "S",
+      "COUT"
+    ]
+  },
+  "prefix": "U",
+  "aliases": {
+    "sum": "S",
+    "carry": "COUT",
+    "cin": "CIN",
+    "c_in": "CIN",
+    "c_out": "COUT"
+  },
+  "required": [
+    "A",
+    "B",
+    "CIN"
+  ],
+  "typeAliases": [
+    "fa",
+    "adder"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}

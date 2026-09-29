@@ -160,7 +160,10 @@ function buildBox(def, component) {
   const value = component.value != null && component.value !== '' ? String(component.value) : '';
   const titleW = Math.max(title ? textWidth(title, 11) : 0, value ? textWidth(value, 10) : 0) + (title || value ? 16 : 0);
   const sideW = Math.max(maxL, maxR);
-  let W = Math.max(60, maxL + maxR + titleW + 20, titleW + 2 * sideW + 20, (Math.max(T.length, B.length) + 1) * 20);
+  // Top and bottom pins sit 20px apart; when two neighbouring names would touch, 30px.
+  const pitch = (list) => (list.some((n, i) => i && (tw(n) + tw(list[i - 1])) / 2 > 20) ? 30 : 20);
+  const pitchT = pitch(T), pitchB = pitch(B);
+  let W = Math.max(60, maxL + maxR + titleW + 20, titleW + 2 * sideW + 20, (T.length + 1) * pitchT, (B.length + 1) * pitchB);
   W = Math.ceil(W / 20) * 20;
   const rows = Math.max(L.length, R.length, 1);
   const top = 20;
@@ -194,17 +197,17 @@ function buildBox(def, component) {
     lines.push(`M${W + 20} ${y}H${W + 40}`);
     label(W + 16, y + 3, n, 'end');
   });
-  const across = (list, y, dir, ty) => {
-    const x0 = 20 + snap((W - (list.length - 1) * 20) / 2);
+  const across = (list, y, dir, ty, step) => {
+    const x0 = 20 + snap((W - (list.length - 1) * step) / 2);
     list.forEach((n, i) => {
-      const x = x0 + i * 20;
+      const x = x0 + i * step;
       pins[n] = { x, y, dir, io: io(n, dir === 'up' ? 'top' : 'bottom') };
       lines.push(dir === 'up' ? `M${x} 0V${top}` : `M${x} ${bottom}V${bottom + 20}`);
       label(x, ty, n, 'middle');
     });
   };
-  across(T, 0, 'up', top + 11);
-  across(B, bottom + 20, 'down', bottom - 5);
+  across(T, 0, 'up', top + 11, pitchT);
+  across(B, bottom + 20, 'down', bottom - 5, pitchB);
   if (lines.length) parts.push(`<path d="${lines.join('')}" fill="none" stroke="currentColor" stroke-width="1.6"/>`);
   const mid = (top + bottom) / 2;
   if (title) text.push(`<text x="${20 + W / 2}" y="${value ? mid - 2 : mid + 4}" font-size="11" font-weight="600" text-anchor="middle">${esc(title)}</text>`);

@@ -1,0 +1,44 @@
+{
+  "type": "bluetooth_module",
+  "name": "Bluetooth serial module",
+  "category": "ic",
+  "kind": "box",
+  "label": "BT",
+  "pins": {
+    "left": [
+      "VCC",
+      "EN",
+      "RXD"
+    ],
+    "right": [
+      "TXD",
+      "STATE"
+    ],
+    "bottom": [
+      "GND"
+    ]
+  },
+  "prefix": "U",
+  "pinIO": {
+    "VCC": "power_in",
+    "GND": "power_in",
+    "EN": "in",
+    "RXD": "in",
+    "TXD": "out",
+    "STATE": "out"
+  },
+  "required": [
+    "VCC",
+    "GND"
+  ],
+  "typeAliases": [
+    "hc05",
+    "hc_05",
+    "bluetooth"
+  ],
+  "origin": {
+    "library": "CircuitForge",
+    "license": "same as the CircuitForge project",
+    "note": "original CircuitForge symbol"
+  }
+}
