@@ -202,6 +202,7 @@ export const RULE_HELP = {
   SHORT_POWER_GROUND: { title: 'Supply shorted to ground', why: 'Connecting a rail straight to ground is a dead short across the supply.', fix: 'Remove the duplicate rail symbol, or put the load between them.' },
   WIRE_THROUGH_COMPONENT: { title: 'Wire crosses a component', why: 'The connection is electrically correct, but the drawing is ambiguous to a reader.', fix: 'Move the part, widen componentGap, or give the connection waypoints.' },
   WIRE_OVERLAP: { title: 'Two nets drawn on top of each other', why: 'Overlapping wires read as a connection that does not exist in the netlist.', fix: 'Give the layout more room (componentGap / wireGap) or move a part.' },
+  INVALID_VALUE: { title: 'Value not understood', why: 'Rules that size resistors, check power ratings or compare voltages need the value as a number. A typo such as "4,7k" or "10kk" hides the part from them.', fix: 'Write the value as a number with an optional SI prefix and unit: 4.7kΩ, 100nF, 12V.' },
   ROUTING_FAILURE: { title: 'Router fell back to a direct wire', why: 'No clean orthogonal path was found, so the wire may cut across the drawing.', fix: 'Increase spacing, or place the parts manually with "position".' },
 };
 
@@ -244,18 +245,23 @@ export function explainType(type) {
 
 // Circuit-level notes: whatever the JSON carries, plus per-part notes and the
 // help text for any rule that fired.
+// Free-text fields come from the JSON, so anything that is not text/a list of text is dropped.
+const asText = (v) => (typeof v === 'string' && v ? v : null);
+const asList = (v) => (Array.isArray(v) ? v.filter((x) => typeof x === 'string' || typeof x === 'number').map(String) : []);
+
 export function explainCircuit(circuit, findings = []) {
   const edu = (circuit && typeof circuit.education === 'object' && circuit.education) || {};
-  const types = [...new Set((circuit?.components || []).map((c) => canonicalType(c.type)).filter(Boolean))];
+  const parts = Array.isArray(circuit?.components) ? circuit.components : [];
+  const types = [...new Set(parts.map((c) => (c && typeof c === 'object' && typeof c.type === 'string' ? canonicalType(c.type) : null)).filter(Boolean))];
   return {
-    title: circuit?.title || null,
-    summary: edu.summary || edu.explanation || null,
-    objectives: edu.objectives || edu.learningObjectives || [],
-    theory: edu.theory || null,
-    questions: edu.questions || [],
-    troubleshooting: edu.troubleshooting || [],
-    experiments: edu.experiments || [],
+    title: asText(circuit?.title),
+    summary: asText(edu.summary) || asText(edu.explanation),
+    objectives: asList(edu.objectives ?? edu.learningObjectives),
+    theory: asText(edu.theory),
+    questions: asList(edu.questions),
+    troubleshooting: asList(edu.troubleshooting),
+    experiments: asList(edu.experiments),
     components: types.map(explainType).filter(Boolean),
-    rules: [...new Set(findings.map((f) => f.code))].map((code) => ({ code, ...(RULE_HELP[code] || {}) })).filter((r) => r.title),
+    rules: [...new Set((Array.isArray(findings) ? findings : []).map((f) => f?.code))].map((code) => ({ code, ...(RULE_HELP[code] || {}) })).filter((r) => r.title),
   };
 }

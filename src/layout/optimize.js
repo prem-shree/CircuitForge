@@ -17,6 +17,11 @@ import { routeCircuit } from '../router/index.js';
 import { unionRect, boundsOf } from '../utils/geometry.js';
 
 const MAX_ATTEMPTS = 4;
+// Routing effort (A* expansions) one drawing may spend across all attempts. It
+// counts work rather than seconds so the same circuit is drawn the same way on
+// every machine. Small circuits never come near it; a very large one gets its
+// first attempt and is not retried.
+export const WORK_BUDGET = 2.5e6;
 const NO_WIRES = { nets: new Map() };
 
 export function measureLayout(placement, routing) {
@@ -98,13 +103,14 @@ function congestionFix(a, base) {
   return changed ? { cfg: next, extra } : null;
 }
 
-export function planLayout(nl, circuit = {}) {
+export function planLayout(nl, circuit = {}, opts = {}) {
+  const budget = opts.workBudget ?? WORK_BUDGET;
   const base = normalizeLayout(circuit, layoutStats(nl));
   // nothing to optimize when every part has a position the user chose
   const auto = nl.parts.some((p) => !p.comp.position);
   const tries = base.optimize && auto ? MAX_ATTEMPTS : 1;
   let cfg = base, extra = [];
-  let best = null, chosen = 0;
+  let best = null, chosen = 0, spent = 0;
   const history = [];
   for (let i = 0; i < tries; i++) {
     const a = attempt(nl, circuit, cfg, extra);
@@ -112,6 +118,9 @@ export function planLayout(nl, circuit = {}) {
     history.push({ ...summary, componentGap: cfg.componentGap, wireGap: cfg.wireGap, labelGap: cfg.labelGap, extraGap: extra.filter(Boolean).length });
     if (!best || a.metrics.score < best.metrics.score) { best = a; chosen = i; }
     if (a.metrics.clean) break;
+    // another attempt costs about as much as this one did
+    spent += a.routing.work || 0;
+    if (spent + (a.routing.work || 0) > budget) break;
     const next = congestionFix(a, base);
     if (!next) break;
     cfg = next.cfg;

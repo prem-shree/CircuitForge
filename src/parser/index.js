@@ -1,4 +1,5 @@
 // JSON text/object -> circuit object + normalized connection list.
+import { formatPath } from '../utils/path.js';
 
 export function parseJSON(text) {
   try {
@@ -89,27 +90,31 @@ export function parseRef(ref) {
 // plus an optional top-level "nets": { "VOUT": ["A.1", "B.2"] }.
 export function normalizeConnections(circuit) {
   const list = [];
-  const push = (refs, name, path, opts = {}) => list.push({
+  const push = (refs, name, path, refPaths, opts = {}) => list.push({
     refs,
+    refPaths,             // JSON path of each endpoint, for error locations and quick fixes
     name: name || null,
     path,
     class: opts.class || opts.type || null,       // signal | power | ground | bus | analog | clock
-    waypoints: Array.isArray(opts.waypoints) ? opts.waypoints : null,
-    route: Array.isArray(opts.route) ? opts.route : null,
+    waypoints: opts.waypoints ?? null,
+    route: opts.route ?? null,
     locked: !!opts.locked,
     label: opts.label ?? null,
   });
   const conns = Array.isArray(circuit.connections) ? circuit.connections : [];
   conns.forEach((c, i) => {
     const path = `connections[${i}]`;
-    if (Array.isArray(c)) push(c, null, path);
+    const at = (...segs) => formatPath(['connections', i, ...segs]);
+    if (Array.isArray(c)) push(c, null, path, c.map((_, j) => at(j)));
     else if (c && typeof c === 'object') {
-      if (Array.isArray(c.pins)) push(c.pins, c.net || c.name, path, c);
-      else push([c.from, c.to], c.net || c.name, path, c);
-    } else push(null, null, path);
+      if (Array.isArray(c.pins)) push(c.pins, c.net || c.name, path, c.pins.map((_, j) => at('pins', j)), c);
+      else push([c.from, c.to], c.net || c.name, path, [at('from'), at('to')], c);
+    } else push(null, null, path, []);
   });
   if (circuit.nets && typeof circuit.nets === 'object' && !Array.isArray(circuit.nets)) {
-    for (const [name, refs] of Object.entries(circuit.nets)) push(Array.isArray(refs) ? refs : null, name, `nets.${name}`);
+    for (const [name, refs] of Object.entries(circuit.nets)) {
+      push(Array.isArray(refs) ? refs : null, name, formatPath(['nets', name]), Array.isArray(refs) ? refs.map((_, j) => formatPath(['nets', name, j])) : []);
+    }
   }
   return list;
 }
@@ -121,6 +126,7 @@ export function parseCircuit(input) {
     input = r.value;
   }
   // Accept API-style envelopes: { circuit: {...} }
-  if (input && typeof input === 'object' && input.circuit && !input.components) input = input.circuit;
-  return { circuit: input, errors: [] };
+  let wrapped = false;
+  if (input && typeof input === 'object' && input.circuit && !input.components) { input = input.circuit; wrapped = true; }
+  return { circuit: input, errors: [], wrapped };
 }

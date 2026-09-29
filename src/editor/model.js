@@ -3,6 +3,7 @@
 import { parseRef } from '../parser/index.js';
 import { resolveSymbol } from '../symbol-loader/index.js';
 import { normAngle } from '../utils/geometry.js';
+import { setPath } from '../utils/path.js';
 
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
@@ -30,14 +31,19 @@ function prettyInline(o) {
   return parts.length ? `{ ${parts.join(', ')} }` : '{}';
 }
 
+// The edit functions run on whatever the user has typed, valid or not, so they
+// only touch a field when it has the expected shape.
+const compsOf = (c) => (Array.isArray(c.components) ? c.components : []);
+const isComp = (x) => x !== null && typeof x === 'object';
+
 const refsOf = (circuit) => {
   const lists = [];
-  (circuit.connections || []).forEach((c, i) => {
+  (Array.isArray(circuit.connections) ? circuit.connections : []).forEach((c, i) => {
     if (Array.isArray(c)) lists.push({ get: () => c, set: (v) => (circuit.connections[i] = v), kind: 'array' });
     else if (c && Array.isArray(c.pins)) lists.push({ get: () => c.pins, set: (v) => (c.pins = v), kind: 'pins' });
     else if (c && typeof c === 'object') lists.push({ get: () => [c.from, c.to], set: (v) => { c.from = v[0]; c.to = v[1]; }, kind: 'pair' });
   });
-  if (circuit.nets && typeof circuit.nets === 'object') {
+  if (circuit.nets && typeof circuit.nets === 'object' && !Array.isArray(circuit.nets)) {
     for (const k of Object.keys(circuit.nets)) if (Array.isArray(circuit.nets[k])) lists.push({ get: () => circuit.nets[k], set: (v) => (circuit.nets[k] = v), kind: 'net' });
   }
   return lists;
@@ -45,7 +51,7 @@ const refsOf = (circuit) => {
 
 export function deleteComponent(circuit, id) {
   const c = clone(circuit);
-  c.components = (c.components || []).filter((x) => x.id !== id);
+  if (Array.isArray(c.components)) c.components = c.components.filter((x) => !(isComp(x) && x.id === id));
   const keep = (r) => parseRef(r)?.comp !== id;
   if (Array.isArray(c.connections)) {
     c.connections = c.connections.map((x) => {
@@ -55,7 +61,7 @@ export function deleteComponent(circuit, id) {
       return x;
     }).filter((x) => x !== null);
   }
-  if (c.nets && typeof c.nets === 'object') {
+  if (c.nets && typeof c.nets === 'object' && !Array.isArray(c.nets)) {
     for (const k of Object.keys(c.nets)) if (Array.isArray(c.nets[k])) c.nets[k] = c.nets[k].filter(keep);
   }
   return c;
@@ -63,7 +69,7 @@ export function deleteComponent(circuit, id) {
 
 export function renameComponent(circuit, oldId, newId) {
   const c = clone(circuit);
-  const comp = c.components.find((x) => x.id === oldId);
+  const comp = compsOf(c).find((x) => isComp(x) && x.id === oldId);
   if (!comp) return c;
   comp.id = newId;
   for (const l of refsOf(c)) {
@@ -77,7 +83,7 @@ export function renameComponent(circuit, oldId, newId) {
 
 export function updateComponent(circuit, id, patch) {
   const c = clone(circuit);
-  const comp = c.components.find((x) => x.id === id);
+  const comp = compsOf(c).find((x) => isComp(x) && x.id === id);
   if (!comp) return c;
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined || v === '' || v === null) delete comp[k];
@@ -90,8 +96,8 @@ export function updateComponent(circuit, id, patch) {
 // every part), then apply `moves` { id: {x, y} }.
 export function pinLayout(circuit, instances, moves = {}) {
   const c = clone(circuit);
-  for (const comp of c.components || []) {
-    const I = instances.get(comp.id);
+  for (const comp of compsOf(c)) {
+    const I = isComp(comp) && instances.get(comp.id);
     if (!I) continue;
     const m = moves[comp.id];
     const r2 = (v) => Math.round(v * 100) / 100;
@@ -106,7 +112,7 @@ export function pinLayout(circuit, instances, moves = {}) {
 export function rotateComponent(circuit, instances, id, step = 90) {
   const I = instances.get(id);
   const c = pinLayout(circuit, instances);
-  const comp = c.components.find((x) => x.id === id);
+  const comp = compsOf(c).find((x) => isComp(x) && x.id === id);
   if (comp && I) comp.rotation = normAngle(I.rot + step);
   return c;
 }
@@ -122,21 +128,30 @@ export function setSpacing(circuit, spacing) {
 
 export function clearLayout(circuit) {
   const c = clone(circuit);
-  for (const comp of c.components || []) { delete comp.position; delete comp.rotation; delete comp.mirror; }
+  for (const comp of compsOf(c)) if (isComp(comp)) { delete comp.position; delete comp.rotation; delete comp.mirror; delete comp.angle; }
   return c;
 }
 
 export function addComponent(circuit, type) {
   const c = clone(circuit);
-  c.components = c.components || [];
+  if (!Array.isArray(c.components)) c.components = [];
   const sym = resolveSymbol({ type });
   const prefix = sym?.prefix || (sym?.rail ? type.toUpperCase() : 'X');
   let n = 1;
-  const ids = new Set(c.components.map((x) => x.id));
+  const ids = new Set(c.components.map((x) => (isComp(x) ? x.id : undefined)));
   while (ids.has(prefix + n)) n++;
   const id = sym?.rail && !ids.has(prefix) ? prefix : prefix + n;
   c.components.push({ id, type });
   return { circuit: c, id };
+}
+
+// Apply the `fix` attached to a validation problem: { label, path, value }.
+// Returns the corrected circuit, or null when the path no longer leads anywhere
+// (the document changed since the problem was reported).
+export function applyFix(circuit, fix) {
+  if (!fix || typeof fix.path !== 'string') return null;
+  const c = clone(circuit);
+  return setPath(c, fix.path, fix.value) ? c : null;
 }
 
 export const EMPTY_CIRCUIT = { title: 'Untitled circuit', components: [], connections: [] };

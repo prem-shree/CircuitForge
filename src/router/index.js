@@ -19,7 +19,16 @@ const BEND = 5, CROSS = 8, VIOLATION = 400;
 
 const popcount = (b) => (b & 1) + ((b >> 1) & 1) + ((b >> 2) & 1) + ((b >> 3) & 1);
 
-export function routeCircuit(nl, instances) {
+// Routing keeps several arrays per grid cell (about 100 bytes with the search
+// state), so a sheet stretched over a huge area, say by a part positioned far
+// away, is drawn with direct wires instead of exhausting memory.
+export const MAX_CELLS = 1500000;
+
+// Most A* expansions one routing pass may spend. Nets are routed shortest first,
+// so on an extremely dense sheet the last, longest ones get direct wires.
+export const MAX_WORK = 1e7;
+
+export function routeCircuit(nl, instances, { maxWork = MAX_WORK } = {}) {
   const insts = [...instances.values()];
   let bounds = null;
   for (const I of insts) bounds = unionRect(bounds, I.extent);
@@ -30,6 +39,7 @@ export function routeCircuit(nl, instances) {
   const W = Math.ceil((bounds.x + bounds.w + PAD - x0) / GRID) + 1;
   const H = Math.ceil((bounds.y + bounds.h + PAD - y0) / GRID) + 1;
   const N = W * H;
+  if (N > MAX_CELLS) return routeDirect(nl, instances);
   const cellOf = (x, y) => {
     const cx = Math.round((x - x0) / GRID), cy = Math.round((y - y0) / GRID);
     return cx < 0 || cy < 0 || cx >= W || cy >= H ? -1 : cy * W + cx;
@@ -127,30 +137,42 @@ export function routeCircuit(nl, instances) {
   const S = N * 4;
   const g = new Float64Array(S);
   const stamp = new Uint32Array(S);
+  const closed = new Uint32Array(S);
   const prev = new Int32Array(S);
   let gen = 0;
-  const heap = [];
-  const push = (f, s) => {
-    heap.push([f, s]);
-    let i = heap.length - 1;
-    while (i > 0) { const pa = (i - 1) >> 1; if (heap[pa][0] <= heap[i][0]) break; [heap[pa], heap[i]] = [heap[i], heap[pa]]; i = pa; }
+  // Binary min-heap on typed arrays (no per-entry allocation). Entries with equal
+  // cost prefer the deeper state, so the search runs straight at the goal across
+  // open grid instead of fanning out over every equally-cheap cell.
+  let hk = new Float64Array(4096), hv = new Int32Array(4096), hn = 0;
+  const push = (key, v) => {
+    if (hn === hk.length) {
+      const k2 = new Float64Array(hn * 2), v2 = new Int32Array(hn * 2);
+      k2.set(hk); v2.set(hv); hk = k2; hv = v2;
+    }
+    let i = hn++;
+    while (i > 0) {
+      const pa = (i - 1) >> 1;
+      if (hk[pa] <= key) break;
+      hk[i] = hk[pa]; hv[i] = hv[pa]; i = pa;
+    }
+    hk[i] = key; hv[i] = v;
   };
   const pop = () => {
-    const top = heap[0], last = heap.pop();
-    if (heap.length) {
-      heap[0] = last;
-      let i = 0;
-      for (;;) {
-        const l = 2 * i + 1, r = l + 1;
-        let m = i;
-        if (l < heap.length && heap[l][0] < heap[m][0]) m = l;
-        if (r < heap.length && heap[r][0] < heap[m][0]) m = r;
-        if (m === i) break;
-        [heap[m], heap[i]] = [heap[i], heap[m]]; i = m;
-      }
+    const top = hv[0];
+    const key = hk[--hn], v = hv[hn];
+    let i = 0;
+    for (;;) {
+      const l = 2 * i + 1;
+      if (l >= hn) break;
+      const r = l + 1;
+      const m = r < hn && hk[r] < hk[l] ? r : l;
+      if (hk[m] >= key) break;
+      hk[i] = hk[m]; hv[i] = hv[m]; i = m;
     }
+    if (hn) { hk[i] = key; hv[i] = v; }
     return top;
   };
+  const TIE = 1e-6; // g-weight in the heap key; far below the smallest real cost step
 
   const foreign = (occ, c, ni) => occ[c] !== 0 && occ[c] !== ni + 1;
   const foreignBits = (c, ni) => {
@@ -158,34 +180,46 @@ export function routeCircuit(nl, instances) {
     return o < 0 ? 0 : bits[o].get(c) || 0;
   };
 
+  // Membership test for the goal tree without hashing: every cell carries the id
+  // of the search that last marked it.
+  const treeMark = new Uint32Array(N);
+  let treeGen = 0;
+  let work = 0; // A* expansions so far: a machine-independent measure of routing effort
+
   function search(ni, start, startDirs, tree, relaxed) {
     gen++;
-    heap.length = 0;
+    hn = 0;
+    treeGen++;
     let bx1 = Infinity, by1 = Infinity, bx2 = -Infinity, by2 = -Infinity;
     for (const c of tree) {
+      treeMark[c] = treeGen;
       const x = c % W, y = (c / W) | 0;
-      bx1 = Math.min(bx1, x); bx2 = Math.max(bx2, x); by1 = Math.min(by1, y); by2 = Math.max(by2, y);
+      if (x < bx1) bx1 = x;
+      if (x > bx2) bx2 = x;
+      if (y < by1) by1 = y;
+      if (y > by2) by2 = y;
     }
-    const h = (c) => {
-      const x = c % W, y = (c / W) | 0;
-      return Math.max(0, bx1 - x, x - bx2) + Math.max(0, by1 - y, y - by2);
-    };
+    // Manhattan distance to the tree's bounding box: never overestimates the cost
+    const h = (x, y) => (x < bx1 ? bx1 - x : x > bx2 ? x - bx2 : 0) + (y < by1 ? by1 - y : y > by2 ? y - by2 : 0);
+    const startX = start % W, startY = (start / W) | 0;
     for (const sd of startDirs) {
       const s0 = start * 4 + sd;
       g[s0] = 0; stamp[s0] = gen; prev[s0] = -1;
-      push(h(start), s0);
+      push(h(startX, startY), s0);
     }
     let iter = 0;
-    while (heap.length) {
+    while (hn) {
       if (++iter > 400000) break;
-      const [f, s] = pop();
+      const s = pop();
+      if (closed[s] === gen) continue; // an equal or cheaper visit already expanded it
+      closed[s] = gen;
       const c = s >> 2, d = s & 3;
+      if (c !== start && treeMark[c] === treeGen) { work += iter; return s; }
       const gc = g[s];
-      if (f - h(c) > gc + 1e-9) continue;
-      if (c !== start && tree.has(c)) return s;
+      const cxx = c % W, cyy = (c / W) | 0;
       for (let nd = 0; nd < 4; nd++) {
         if (nd === ((d + 2) & 3)) continue;
-        const x = (c % W) + DX[nd], y = ((c / W) | 0) + DY[nd];
+        const x = cxx + DX[nd], y = cyy + DY[nd];
         if (x < 0 || y < 0 || x >= W || y >= H) continue;
         const n = y * W + x;
         let cost = 1 + soft[n];
@@ -194,7 +228,8 @@ export function routeCircuit(nl, instances) {
           cost += BEND;
           if (foreign(occH, c, ni) || foreign(occV, c, ni)) { if (!relaxed) continue; cost += VIOLATION; }
         }
-        if (approach[n] !== -1 && approach[n] !== ni) { if (!relaxed) continue; cost += VIOLATION; }
+        const ap = approach[n];
+        if (ap !== -1 && ap !== ni) { if (!relaxed) continue; cost += VIOLATION; }
         const owner = pinOwner[n];
         if (owner !== -1) {
           if (owner !== ni || !(pinEntry[n] & (1 << nd))) { if (!relaxed || owner === ni) continue; cost += VIOLATION * 2; }
@@ -210,7 +245,7 @@ export function routeCircuit(nl, instances) {
           if (!straight) { if (!relaxed) continue; cost += VIOLATION; }
           cost += CROSS;
         }
-        if (tree.has(n) && owner === -1) {
+        if (owner === -1 && treeMark[n] === treeGen) {
           const nb = (bits[ni].get(n) || 0) | BIT[(nd + 2) & 3];
           if (popcount(nb) > 3) cost += BEND;
         }
@@ -218,9 +253,10 @@ export function routeCircuit(nl, instances) {
         const ng = gc + cost;
         if (stamp[ns] === gen && g[ns] <= ng) continue;
         stamp[ns] = gen; g[ns] = ng; prev[ns] = s;
-        push(ng + h(n), ns);
+        push(ng + h(x, y) - TIE * ng, ns);
       }
     }
+    work += iter;
     return -1;
   }
 
@@ -317,13 +353,17 @@ export function routeCircuit(nl, instances) {
       const p = todo.splice(bi, 1)[0];
       if (tree.has(p.cell)) continue;
       const sd = p.exits.map((e) => DIR_INDEX[e]);
-      let end = search(ni, p.cell, sd, tree, false);
-      if (end < 0) end = search(ni, p.cell, sd, tree, true);
+      const overBudget = work >= maxWork;
+      let end = -1;
+      if (!overBudget) {
+        end = search(ni, p.cell, sd, tree, false);
+        if (end < 0) end = search(ni, p.cell, sd, tree, true);
+      }
       let cells;
       if (end >= 0) {
         cells = trace(end);
       } else {
-        failures.push({ net: net.id, comp: p.comp, pin: p.pin });
+        failures.push({ net: net.id, comp: p.comp, pin: p.pin, ...(overBudget ? { reason: 'work-limit' } : {}) });
         const t = [...tree][0];
         const mid = cellOf(cx(t), p.y);
         cells = [p.cell, mid, t].filter((c, i, a) => c >= 0 && c !== a[i - 1]);
@@ -354,12 +394,15 @@ export function routeCircuit(nl, instances) {
     }
   }
   // A relaxed route may have cut through a body or another net: report it.
-  // ponytail: O(segments x parts) scan; fine at schematic scale.
   const violations = [];
-  const shrunk = insts.map((I) => [I, bodyPoly(I, -1.5)]);
+  const shrunk = insts.map((I) => { const poly = bodyPoly(I, -1.5); return { I, poly, box: boundsOf(poly) }; });
   for (const [id, net] of nets) {
     for (const seg of net.segments) {
-      for (const [I, poly] of shrunk) {
+      const sx1 = Math.min(seg.x1, seg.x2), sx2 = Math.max(seg.x1, seg.x2);
+      const sy1 = Math.min(seg.y1, seg.y2), sy2 = Math.max(seg.y1, seg.y2);
+      for (const { I, poly, box } of shrunk) {
+        // cheap box rejection first: almost no wire is near most parts
+        if (sx2 < box.x || sx1 > box.x + box.w || sy2 < box.y || sy1 > box.y + box.h) continue;
         if (segHitsPoly(seg, poly)) {
           violations.push({ code: 'WIRE_THROUGH_COMPONENT', net: id, comp: I.id, x: I.body.x + I.body.w / 2, y: I.body.y + I.body.h / 2 });
           break;
@@ -367,17 +410,52 @@ export function routeCircuit(nl, instances) {
       }
     }
   }
-  const all = [...nets.values()].flatMap((nn) => nn.segments.map((sg) => ({ ...sg, net: nn.id })));
-  for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
-    const a = all[i], b = all[j];
-    if (a.net === b.net) continue;
-    const overlap = (a.y1 === a.y2 && b.y1 === b.y2 && a.y1 === b.y1 &&
-        Math.min(Math.max(a.x1, a.x2), Math.max(b.x1, b.x2)) > Math.max(Math.min(a.x1, a.x2), Math.min(b.x1, b.x2)))
-      || (a.x1 === a.x2 && b.x1 === b.x2 && a.x1 === b.x1 &&
-        Math.min(Math.max(a.y1, a.y2), Math.max(b.y1, b.y2)) > Math.max(Math.min(a.y1, a.y2), Math.min(b.y1, b.y2)));
-    if (overlap) violations.push({ code: 'WIRE_OVERLAP', net: a.net, other: b.net, x: (Math.max(Math.min(a.x1, a.x2), Math.min(b.x1, b.x2)) + Math.min(Math.max(a.x1, a.x2), Math.max(b.x1, b.x2))) / 2, y: (a.y1 + b.y2) / 2 });
+  // Two nets sharing a stretch of wire: group segments by the line they lie on,
+  // then compare only within a line.
+  const lines = new Map();
+  for (const [nid, nn] of nets) {
+    for (const sg of nn.segments) {
+      const horiz = sg.y1 === sg.y2;
+      if (!horiz && sg.x1 !== sg.x2) continue;
+      const key = horiz ? `h${sg.y1}` : `v${sg.x1}`;
+      const lo = horiz ? Math.min(sg.x1, sg.x2) : Math.min(sg.y1, sg.y2);
+      const hi = horiz ? Math.max(sg.x1, sg.x2) : Math.max(sg.y1, sg.y2);
+      if (!lines.has(key)) lines.set(key, []);
+      lines.get(key).push({ net: nid, lo, hi });
+    }
   }
-  return { nets, junctions, crossings, failures, violations };
+  for (const [key, list] of lines) {
+    if (list.length < 2) continue;
+    list.sort((p, q) => p.lo - q.lo);
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length && list[j].lo < list[i].hi; j++) {
+        if (list[i].net === list[j].net) continue;
+        const from = list[j].lo, to = Math.min(list[i].hi, list[j].hi);
+        if (to <= from) continue;
+        const mid = (from + to) / 2, at = Number(key.slice(1));
+        violations.push({ code: 'WIRE_OVERLAP', net: list[i].net, other: list[j].net, x: key[0] === 'h' ? mid : at, y: key[0] === 'h' ? at : mid });
+      }
+    }
+  }
+  return { nets, junctions, crossings, failures, violations, work };
+}
+
+// Fallback for sheets too large to grid: each net becomes L-shaped wires from its
+// first pin to every other pin. Nothing is checked for collisions.
+function routeDirect(nl, instances) {
+  const nets = new Map();
+  for (const [id, net] of nl.nets) {
+    if (net.rail) continue;
+    const pins = net.pins.filter((e) => instances.has(e.comp)).map((e) => instances.get(e.comp).pins[e.pin]);
+    if (pins.length < 2) continue;
+    const paths = pins.slice(1).map((p) => simplify([{ x: pins[0].x, y: pins[0].y }, { x: p.x, y: pins[0].y }, { x: p.x, y: p.y }]));
+    nets.set(id, { id, paths, segments: toSegments(paths) });
+  }
+  const first = [...nl.nets.values()].find((n) => !n.rail && n.pins.length > 1)?.pins[0];
+  return {
+    nets, junctions: [], crossings: [], violations: [], work: 0,
+    failures: first ? [{ net: null, comp: first.comp, pin: first.pin, reason: 'too-large' }] : [],
+  };
 }
 
 function span(pins) {

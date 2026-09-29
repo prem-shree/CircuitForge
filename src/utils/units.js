@@ -9,7 +9,7 @@ export function parseValue(raw) {
   // 4k7 / 1R2 style
   let m = new RegExp(`^([+-]?\\d+)([pnuµμmkKMGRr])(\\d+)(?:${UNITS})?$`).exec(s);
   if (m) return (Number(m[1]) + Number('0.' + m[3])) * PREFIX[m[2]];
-  m = new RegExp(`^([+-]?(?:\\d+\\.?\\d*|\\.\\d+))\\s*([pnuµμmkKMGRr])?\\s*(?:${UNITS})?$`).exec(s);
+  m = new RegExp(`^([+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)\\s*([pnuµμmkKMGRr])?\\s*(?:${UNITS})?$`).exec(s);
   if (!m) return null;
   const n = Number(m[1]);
   if (!Number.isFinite(n)) return null;

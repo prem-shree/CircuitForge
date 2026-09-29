@@ -48,6 +48,7 @@ export function buildNetlist(validation) {
     groups.get(r).push(k);
   }
   const partIds = new Set(parts.map((p) => p.id));
+  const warnings = [];
   const nets = new Map();
   const keyToNet = new Map();
   let n = 0;
@@ -55,12 +56,13 @@ export function buildNetlist(validation) {
     const pins = [];
     const rails = [];
     let rail = null, name = null;
+    const names = [];
     for (const k of keys) {
       if (k.startsWith('rail:')) {
         const r = railOf.get(k);
         rails.push(r);
         if (!rail || RAIL_PRIORITY[r.kind] > RAIL_PRIORITY[rail.kind]) rail = r;
-      } else if (k.startsWith('named:')) name = name || k.slice(6);
+      } else if (k.startsWith('named:')) { name = name || k.slice(6); names.push(k.slice(6)); }
       else {
         const i = k.indexOf('.');
         const comp = k.slice(0, i), pin = k.slice(i + 1);
@@ -68,6 +70,14 @@ export function buildNetlist(validation) {
       }
     }
     if (!pins.length) continue;
+    if (names.length > 1) {
+      const shown = rail ? rail.name : name;
+      warnings.push({
+        code: 'NET_NAME_CONFLICT',
+        message: `One net is given several names (${names.map((x) => `"${x}"`).join(', ')}); everything wired to it is the same net, so only "${shown}" is shown. Remove the extra name or the wire that joins them.`,
+        component: pins[0].comp,
+      });
+    }
     const id = `N${++n}`;
     if (rail) rail = { ...rail, sym: resolveSymbol({ type: rail.type }) };
     nets.set(id, { id, name: rail ? rail.name : name, pins, rail, rails });
@@ -103,5 +113,5 @@ export function buildNetlist(validation) {
     const src = parts.find((p) => p.sym.source && p.pinNets.negative && !nets.get(p.pinNets.negative).rail);
     if (src) returnNet = src.pinNets.negative;
   }
-  return { parts, nets, returnNet, hints, connections };
+  return { parts, nets, returnNet, hints, connections, warnings };
 }

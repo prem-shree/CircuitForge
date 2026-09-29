@@ -24,6 +24,7 @@ export function sceneBounds(scene) {
   const c = scene.circuit || {};
   for (const p of placeMeasurements(scene)) b = unionRect(b, unionRect(p.box, { x: p.at.x - 7, y: p.at.y - 7, w: 14, h: 14 }));
   for (const m of Array.isArray(c.annotations) ? c.annotations : []) {
+    if (!m || typeof m !== 'object') continue;
     const at = anchorOf(scene, m.at ?? m.position ?? m);
     if (!at) continue;
     const dx = Number.isFinite(m.dx) ? m.dx : 0, dy = Number.isFinite(m.dy) ? m.dy : -22;
@@ -170,6 +171,7 @@ export function placeMeasurements(scene) {
   const segs = [...scene.routing.nets.values()].flatMap((n) => n.segments);
   const out = [];
   for (const m of list) {
+    if (!m || typeof m !== 'object') continue;
     const kind = String(m.type || m.quantity || 'voltage').toLowerCase();
     const label = [m.label ?? m.name ?? '', m.expected != null ? `${m.expected}` : ''].filter(Boolean).join(' = ');
     const w = textWidth(label, 10);
@@ -206,6 +208,7 @@ function renderExtras(scene, th) {
       + '</g>');
   }
   for (const a of Array.isArray(c.annotations) ? c.annotations : []) {
+    if (!a || typeof a !== 'object') continue;
     const at = anchorOf(scene, a.at ?? a.position ?? a);
     const text = a.text ?? a.note ?? a.label;
     if (!at || !text) continue;

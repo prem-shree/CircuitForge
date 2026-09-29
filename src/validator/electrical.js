@@ -5,6 +5,8 @@
 import { parseValue, formatValue, railVoltage } from '../utils/units.js';
 
 const DEFAULTS = {
+  // values
+  INVALID_VALUE: 'info',
   // wiring
   DANGLING_NET: 'warning',
   SHORTED_COMPONENT: 'warning',
@@ -30,6 +32,17 @@ const DEFAULTS = {
   IC_MISSING_POWER: 'warning',
   CLOCK_TIED_TO_RAIL: 'warning',
   COMBINATIONAL_LOOP: 'warning',
+};
+
+// Parts whose "value" is a number with a unit. Symbolic values such as "Rx" are
+// legitimate in teaching diagrams, so only a value that starts like a number and
+// then fails to parse is reported.
+const VALUE_UNITS = {
+  resistor: ['Ω', '4.7kΩ, 100Ω or 2MΩ'], variable_resistor: ['Ω', '4.7kΩ, 100Ω or 2MΩ'], potentiometer: ['Ω', '10kΩ, 470Ω or 1MΩ'],
+  capacitor: ['F', '100nF, 4.7µF or 22pF'], capacitor_polarized: ['F', '100µF, 4.7µF or 1000µF'],
+  inductor: ['H', '10mH, 1µH or 2.2mH'],
+  dc_source: ['V', '5V, 3.3V or 12V'], battery: ['V', '9V, 1.5V or 3.7V'], ac_source: ['V', '5V, 230V or 100mV'],
+  current_source: ['A', '10mA, 1A or 500µA'],
 };
 
 const CURRENT_LIMITERS = new Set(['resistor', 'variable_resistor', 'potentiometer', 'photoresistor', 'lamp', 'motor', 'buzzer', 'speaker', 'relay', 'inductor', 'fuse', 'ldo', 'voltage_regulator', 'motor_driver']);
@@ -89,6 +102,20 @@ export function checkElectrical({ circuit = {}, netlist, routing = null }) {
   const hasLimiter = (walk) => walk.chain.some((p) => CURRENT_LIMITERS.has(p.sym.type));
   const toPositive = (w) => w.end === 'power' || w.end === 'source+';
   const toNegative = (w) => w.end === 'ground' || w.end === 'source-';
+
+  // ---------------------------------------------------------------- values
+  for (const p of parts) {
+    const spec = VALUE_UNITS[p.sym.type];
+    const raw = p.comp.value;
+    if (!spec || typeof raw !== 'string') continue;
+    const first = raw.trim().split(/[\s/;(]+/)[0];
+    if (!/^[+-]?[\d.]/.test(first) || parseValue(first) !== null) continue;
+    const comma = /^[+-]?\d+,\d/.test(first);
+    add('INVALID_VALUE', `The value "${raw}" of ${nameOf(p)} is not a number the checks can read, so calculations that need it are skipped.`, {
+      component: p.id,
+      hint: comma ? `Use a decimal point, not a comma: "${first.replace(',', '.')}".` : `Write it like ${spec[1]}: a number, an optional SI prefix (p n µ m k M G) and the unit ${spec[0]}.`,
+    });
+  }
 
   // ---------------------------------------------------------------- wiring
   for (const [id, n] of nets) {

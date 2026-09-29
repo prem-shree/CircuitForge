@@ -4,10 +4,11 @@
 //   body:{x,y,w,h}, svgBody, origin:{x,y}, aliases, rail, kind, text, labels, ... }
 import LIB from './library.generated.js';
 import { textWidth, snap } from '../utils/geometry.js';
+import { has, dict, RESERVED_NAMES } from '../utils/safe.js';
 
 const norm = (s) => String(s).trim().toLowerCase().replace(/[\s-]+/g, '_');
 
-const TYPE_ALIAS = {};
+const TYPE_ALIAS = dict();
 for (const [type, def] of Object.entries(LIB)) {
   for (const a of def.typeAliases || []) TYPE_ALIAS[norm(a)] = type;
 }
@@ -19,7 +20,8 @@ export const UNSUPPORTED_TYPES = ['raspberry_pi', 'rpi', 'raspberry_pi_4', 'rasp
 export function canonicalType(type) {
   if (type == null) return null;
   const t = norm(type);
-  return LIB[t] ? t : TYPE_ALIAS[t] || null;
+  if (has(LIB, t)) return t;
+  return has(TYPE_ALIAS, t) ? TYPE_ALIAS[t] : null;
 }
 
 export function listTypes() {
@@ -27,15 +29,16 @@ export function listTypes() {
 }
 
 export function getDef(type) {
-  return LIB[canonicalType(type)] || null;
+  const t = canonicalType(type);
+  return t ? LIB[t] : null;
 }
 
 const cache = new Map();
 
 export function resolveSymbol(component) {
   const type = canonicalType(component.type);
+  if (!type) return null;
   const def = LIB[type];
-  if (!def) return null;
   if (def.kind === 'box') {
     const key = [type, JSON.stringify(component.pins ?? null), JSON.stringify(component.pinTypes ?? null), component.label ?? '', component.value ?? ''].join('|');
     if (!cache.has(key)) cache.set(key, buildBox(def, component));
@@ -49,7 +52,7 @@ function finish(def, sym) {
   sym.pinOrder = Object.keys(sym.pins);
   const first = sym.pins[sym.pinOrder[0]];
   sym.origin = { x: first.x, y: first.y };
-  const aliases = {};
+  const aliases = dict();
   for (const n of sym.pinOrder) {
     aliases[n.toLowerCase()] = n;
     if (n.startsWith('~')) aliases[n.slice(1).toLowerCase()] = n;
@@ -65,30 +68,84 @@ function finish(def, sym) {
 
 export function resolvePin(sym, name) {
   if (!sym || name == null) return null;
-  return sym.aliases[String(name).trim().toLowerCase()] || null;
+  const key = String(name).trim().toLowerCase();
+  return has(sym.aliases, key) ? sym.aliases[key] : null;
 }
 
 // ---- Generated rectangular IC symbols -------------------------------------
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-function boxSpec(def, component) {
+// Most pins one generated box may carry (a wider part is a data error, not a drawing).
+export const MAX_BOX_PINS = 128;
+const SIDES = ['left', 'right', 'top', 'bottom'];
+
+// Clean a list of pin names. Anything unusable is dropped; `problems` (when
+// given) collects one plain-language sentence per dropped name so the validator
+// can report exactly what was ignored.
+function cleanPinNames(list, seen, problems, where) {
+  const out = [];
+  for (const raw of list) {
+    if (typeof raw !== 'string' && typeof raw !== 'number') {
+      problems?.push(`${where} has a pin name that is not text: ${JSON.stringify(raw)}.`);
+      continue;
+    }
+    const name = String(raw).trim();
+    const bare = name.replace(/^~/, '').toLowerCase();
+    if (!bare) { problems?.push(`${where} has an empty pin name.`); continue; }
+    if (RESERVED_NAMES.has(bare)) { problems?.push(`${where} uses the reserved pin name "${name}".`); continue; }
+    if (seen.has(bare)) { problems?.push(`${where} lists pin "${name}" more than once (pin names are not case-sensitive).`); continue; }
+    if (seen.size >= MAX_BOX_PINS) { problems?.push(`${where} has more than ${MAX_BOX_PINS} pins; the rest are ignored.`); break; }
+    seen.add(bare);
+    out.push(name);
+  }
+  return out;
+}
+
+// The pin layout for a box part: { left, right, top, bottom } of pin-name lists.
+// Always returns something drawable, however malformed `component.pins` is.
+export function boxSpec(def, component, problems = null) {
   const p = component.pins;
   if (p == null) return def.pins;
   const side = Object.keys(def.pins)[0] || 'right';
-  if (typeof p === 'number') return { [side]: Array.from({ length: Math.max(1, Math.min(64, p | 0)) }, (_, i) => String(i + 1)) };
+  const seen = new Set();
+  if (typeof p === 'number') {
+    if (!Number.isInteger(p) || p < 1 || p > 64) {
+      problems?.push(`"pins" must be a whole number from 1 to 64 (got ${JSON.stringify(p)}).`);
+    }
+    const n = Number.isFinite(p) ? Math.max(1, Math.min(64, Math.trunc(p))) : 1;
+    return { [side]: Array.from({ length: n }, (_, i) => String(i + 1)) };
+  }
   if (Array.isArray(p)) {
-    const names = p.map(String);
+    const names = cleanPinNames(p, seen, problems, '"pins"');
     if (def.type === 'connector') return { [side]: names };
     const half = Math.ceil(names.length / 2);
     return { left: names.slice(0, half), right: names.slice(half) };
   }
   if (typeof p === 'object') {
     const out = {};
-    for (const s of ['left', 'right', 'top', 'bottom']) if (Array.isArray(p[s])) out[s] = p[s].map(String);
+    for (const k of Object.keys(p)) {
+      if (!SIDES.includes(k)) problems?.push(`"pins" has an unknown side "${k}"; use left, right, top or bottom.`);
+    }
+    for (const s of SIDES) {
+      if (p[s] === undefined) continue;
+      if (!Array.isArray(p[s])) { problems?.push(`"pins.${s}" must be an array of pin names.`); continue; }
+      out[s] = cleanPinNames(p[s], seen, problems, `"pins.${s}"`);
+    }
     return out;
   }
+  problems?.push('"pins" must be a number, an array of names or an object with left/right/top/bottom lists.');
   return def.pins;
+}
+
+// Everything wrong with a component's "pins" field, as sentences.
+export function pinSpecProblems(component) {
+  const def = getDef(component.type);
+  if (component.pins === undefined || !def) return [];
+  if (def.kind !== 'box') return [`"pins" has no effect on ${def.name.toLowerCase()} parts: their pins are fixed (${Object.keys(def.pins).join(', ')}).`];
+  const problems = [];
+  boxSpec(def, component, problems);
+  return problems;
 }
 
 function buildBox(def, component) {
@@ -110,7 +167,7 @@ function buildBox(def, component) {
   const firstY = top + (T.length ? 40 : 20);
   let bottom = firstY + (rows - 1) * 20 + (B.length ? 40 : 20);
   if (title && value && bottom - top < 60) bottom = top + 60;
-  const pins = {};
+  const pins = dict();
   const parts = [`<rect x="20" y="${top}" width="${W}" height="${bottom - top}" fill="none" stroke="currentColor" stroke-width="1.6"/>`];
   const text = [];
   const label = (x, y, name, anchor) => {
@@ -120,7 +177,7 @@ function buildBox(def, component) {
   };
   // Electrical pin type: explicit override, then supply-pin names, then the side.
   const POWER_PIN = /^(vcc|vdd|vss|vee|gnd|agnd|dgnd|vin|vbus|vsys|v\+|v-|\d+v\d?|\d+v\d?v?)$/i;
-  const io = (name, side) => def.pinIO?.[name] || def.io
+  const io = (name, side) => (has(def.pinIO, name) && def.pinIO[name]) || def.io
     || (POWER_PIN.test(name.replace(/^~/, '')) ? 'power_in' : side === 'left' ? 'in' : side === 'right' ? 'out' : 'power_in');
   const isClock = (n) => /^~?(clk|cp|clock)$/i.test(n);
   const lines = [];
