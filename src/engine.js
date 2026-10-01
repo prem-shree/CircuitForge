@@ -15,7 +15,7 @@ import { checkElectrical } from './validator/electrical.js';
 import { buildNetlist } from './graph/index.js';
 import { planLayout } from './layout/optimize.js';
 import { renderSVG } from './renderer/index.js';
-import { annotateLines } from './parser/locate.js';
+import { annotateLines, lazyIndex } from './parser/locate.js';
 
 const hasDesignError = (findings) => findings.some((f) => f.severity === 'error');
 const now = () => (typeof performance !== 'undefined' ? performance.now() : Date.now());
@@ -28,19 +28,20 @@ const failed = (stage, e) => ({ valid: false, errors: [crash(stage, e)], warning
 
 // Give every located problem a JSON path (from its component) and, when the input
 // was text, a line and column.
-function locate(problems, v, text) {
+function locate(problems, v, index) {
   const paths = v.resolved?.paths;
   if (paths) for (const p of problems) if (!p.path && p.component && paths.has(p.component)) p.path = paths.get(p.component);
   // an API envelope { "circuit": {…} } puts every path one level down
-  if (text !== null) annotateLines(problems, text, v.wrapped ? ['circuit'] : []);
+  if (index) annotateLines(problems, '', v.wrapped ? ['circuit'] : [], index);
   return problems;
 }
-const textOf = (input) => (typeof input === 'string' ? input : null);
+// One index per call, built only if some problem needs a line.
+const indexOf = (input) => (typeof input === 'string' ? lazyIndex(input) : null);
 
 export function validate(input, options = {}) {
   try {
     const v = validateCircuit(input, options);
-    const text = textOf(input);
+    const text = indexOf(input);
     if (!v.valid) return { valid: false, errors: locate(v.errors, v, text), warnings: locate(v.warnings, v, text), findings: [] };
     let findings = [];
     try {
@@ -108,7 +109,7 @@ export function render(input, options = {}) {
   const t0 = now();
   try {
     const v = validateCircuit(input, options);
-    const text = textOf(input);
+    const text = indexOf(input);
     const { scene } = buildScene(input, v, options);
     if (!scene) return { valid: false, errors: locate(v.errors, v, text), warnings: locate(v.warnings, v, text), findings: [], svg: null };
     const out = renderSVG(scene, options);

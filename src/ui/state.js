@@ -16,6 +16,7 @@ export const state = {
   text: '',
   circuit: null,     // last successfully parsed circuit object (an API envelope is unwrapped)
   wrapped: false,    // the text is { "circuit": {…} }
+  root: null,        // the whole parsed document (the envelope, when wrapped)
   syntaxError: false, // the text does not parse right now: edits are refused until it does
   result: null,      // last drawable render (with scene)
   findings: [],

@@ -76,6 +76,7 @@ function update({ fit = false } = {}) {
     errors = parsed.errors;
     canvas.setStale(true);
   } else {
+    state.root = parsed.value;
     state.wrapped = isEnvelope(parsed.value);
     state.circuit = unwrapCircuit(parsed.value);
     const r = renderCached(parsed.value, state.text);
@@ -190,8 +191,10 @@ function setText(text, { record = true, fit = false, label = null, key = null } 
 // would work from the last valid version and overwrite what is being typed.
 function sync() {
   flushTyping();
-  if (state.syntaxError) toast('Fix the JSON syntax error first: the canvas shows the last valid version.', true);
-  return !state.syntaxError;
+  if (state.syntaxError) { toast('Fix the JSON syntax error first: the canvas shows the last valid version.', true); return false; }
+  // valid JSON that is not a circuit object (null, 42, a list): nothing to edit
+  if (!state.circuit || typeof state.circuit !== 'object' || Array.isArray(state.circuit)) { toast('The JSON is not a circuit object. Start from { "components": [], "connections": [] }.', true); return false; }
+  return true;
 }
 
 // Every edit from the canvas, inspector and commands comes through here: one
@@ -199,7 +202,9 @@ function sync() {
 function commit(circuit, { label = null, key = null, select: ids = null, fit = false } = {}) {
   if (!sync()) return false;
   if (ids) { state.selection = [...ids]; canvas.setSelection(state.selection); }
-  setText(formatJSON(circuit) + '\n', { label, key, fit });
+  // an API envelope { "circuit": …, "theme": … } keeps its other fields: only the circuit inside changes
+  const doc = state.wrapped && state.root ? { ...state.root, circuit } : circuit;
+  setText(formatJSON(doc) + '\n', { label, key, fit });
   return true;
 }
 
@@ -372,9 +377,12 @@ EXAMPLES.forEach((s, i) => {
   examplesMenu.append(b);
 });
 
+// Replace the whole document (File > New, an example). Unlike an edit this must work
+// when the current text does not parse: starting over is the way out of that.
 function loadCircuit(c, label = 'New circuit') {
   select([]);
-  commit(c, { label, fit: true });
+  flushTyping();
+  setText(formatJSON(c) + '\n', { label, fit: true });
 }
 
 // ---------------------------------------------------------------- actions

@@ -14,13 +14,16 @@ export function initCommands(app) {
   const ids = () => [...state.selection];
   let pasteCount = 0;
 
+  // Paste a snippet into the current circuit. Always re-checks the document first: this
+  // may run after an async clipboard read, when typing could have changed it.
   function pasteSnippet(snippet) {
+    if (!app.sync() || !state.circuit) return false;
     pasteCount++;
     const step = 40 * pasteCount;
     // parts that have positions land beside the copy; auto-laid-out circuits place them themselves
     const { circuit, ids: added } = pasteSubcircuit(state.circuit, snippet, { x: step, y: step });
-    if (!added.length) return false;
-    app.commit(circuit, { label: `Paste ${describeIds(added)}`, key: null, select: added });
+    if (!added.length) { app.toast('Nothing to paste: the clipboard holds no parts.', true); return false; }
+    if (!app.commit(circuit, { label: `Paste ${describeIds(added)}`, key: null, select: added })) return false;
     app.toast(`Pasted ${describeIds(added)}`);
     return true;
   }
@@ -74,12 +77,16 @@ export function initCommands(app) {
       if (!app.sync() || !state.circuit) return false;
       if (state.clipboard) return pasteSnippet(state.clipboard);
       if (!navigator.clipboard?.readText) return false;
-      Promise.resolve(navigator.clipboard.readText()).then((text) => {
-        let snippet = null;
-        try { snippet = JSON.parse(text); } catch { /* not JSON */ }
-        if (snippet?.format === 'circuitforge-selection') pasteSnippet(snippet);
-        else app.toast('Nothing to paste. Select parts and press Ctrl+C first.', true);
-      }).catch(() => app.toast('Nothing to paste: copy some parts first (the browser did not allow reading the clipboard).', true));
+      navigator.clipboard.readText().then(
+        (text) => {
+          let snippet = null;
+          try { snippet = JSON.parse(text); } catch { /* not JSON */ }
+          if (snippet?.format === 'circuitforge-selection') pasteSnippet(snippet);
+          else app.toast('Nothing to paste. Select parts and press Ctrl+C first.', true);
+        },
+        // only a refused clipboard read is reported as one
+        () => app.toast('Nothing to paste: copy some parts first (the browser did not allow reading the clipboard).', true),
+      );
       return true;
     },
 

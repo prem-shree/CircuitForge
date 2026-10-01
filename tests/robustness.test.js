@@ -6,6 +6,7 @@ import { buildNetlist } from '../src/graph/index.js';
 import { layoutCircuit } from '../src/layout/index.js';
 import { routeCircuit, MAX_CELLS } from '../src/router/index.js';
 import { formatJSON, deleteComponent, renameComponent, pinLayout, rotateComponent, clearLayout, addComponent } from '../src/editor/model.js';
+import { parseValue } from '../src/utils/units.js';
 import { loadExamples, clone, lcg, gateNetwork, minimal } from './helpers.js';
 
 const codes = (r) => r.errors.map((e) => e.code);
@@ -228,14 +229,20 @@ test('validation cost is bounded whatever the document looks like', () => {
   const bad = timed({ components: comps, connections: Array.from({ length: 20 }, (_, k) => Array.from({ length: 500 }, (_, j) => `Z${k}_${j}.1`)) });
   assert.ok(bad.ms < 1500, `bad references: ${bad.ms} ms`);
   assert.equal(bad.r.errors.length, LIMITS.errors + 1);
-  assert.equal(bad.r.warnings.at(-1).code, 'TOO_MANY_WARNINGS');
+  // after stopping at the cap the validator has seen only part of the circuit, so it must not
+  // claim that parts are "not connected"
+  assert.ok(!bad.r.warnings.some((w) => w.code === 'UNCONNECTED_COMPONENT' || w.code === 'MISSING_REQUIRED_PIN'));
+  // warnings are capped like errors
+  const many = validate({ components: Array.from({ length: 400 }, (_, i) => ({ id: `R${i}`, type: 'resistor' })), connections: [] });
+  assert.equal(many.warnings.length, LIMITS.warnings + 1);
+  assert.equal(many.warnings.at(-1).code, 'TOO_MANY_WARNINGS');
   // more pins than the limit names in total is refused outright
   const huge = timed({ components: comps, connections: Array.from({ length: 6000 }, () => Array.from({ length: 500 }, (_, j) => `R${j}.1`)) });
   assert.ok(huge.ms < 200);
   assert.ok(huge.r.errors.some((e) => e.code === 'LIMIT_EXCEEDED' && /in total/.test(e.message)));
   // a long duplicate list cannot flood the warnings
   const dup = validate({ components: comps.slice(0, 5), connections: Array.from({ length: 200 }, () => ['R0.1', 'R1.1']) });
-  assert.ok(dup.warnings.filter((w) => w.code === 'DUPLICATE_CONNECTION').length <= 25);
+  assert.ok(dup.warnings.filter((w) => w.code === 'DUPLICATE_CONNECTION').length <= 26, 'at most 25 plus the summary');
 });
 
 test('a short id is never "corrected" to a different part', () => {
@@ -260,4 +267,52 @@ test('a measurement or annotation pointing at an inherited name draws no NaN', (
   const out = render(d);
   assert.deepEqual(out.errors, []);
   assert.equal(out.svg.match(/cf-measurement/g).length, 2);
+});
+
+test('the "nets" form counts towards the same limits as connections', () => {
+  const comps = Array.from({ length: 100 }, (_, i) => ({ id: `R${i}`, type: 'resistor' }));
+  const nets = {};
+  for (let i = 0; i < 6000; i++) nets[`N${i}`] = Array.from({ length: 500 }, (_, j) => `R${j % 100}.1`);
+  const t0 = Date.now();
+  const r = validate({ components: comps, connections: [], nets });
+  assert.ok(Date.now() - t0 < 500, 'refused before any real work');
+  assert.ok(r.errors.some((e) => e.code === 'LIMIT_EXCEEDED' && /in total/.test(e.message)));
+  const wide = {};
+  for (let i = 0; i < LIMITS.connections + 1; i++) wide[`N${i}`] = ['R0.1', 'R1.1'];
+  assert.ok(validate({ components: comps, nets: wide }).errors.some((e) => e.code === 'LIMIT_EXCEEDED'));
+});
+
+test('designators that differ by a digit are different parts, not typos', () => {
+  const comps = ['R1', 'R2', 'R12', 'C1'].map((id) => ({ id, type: id[0] === 'R' ? 'resistor' : 'capacitor' }));
+  const errs = validate({ components: comps, connections: [['R13.1', 'C1.1'], ['R10.2', 'C1.2'], ['r12.1', 'R1.1']] }).errors.filter((e) => e.code === 'MISSING_COMPONENT');
+  assert.equal(errs.length, 3);
+  assert.equal(errs[0].fix, undefined, 'R13 is not R1');
+  assert.equal(errs[1].fix, undefined, 'R10 is not R1');
+  assert.equal(errs[2].fix.value, 'R12.1', 'a case slip still is corrected');
+  // a long unmatched name is not searched at all
+  const long = validate({ components: comps, connections: [[`${'x'.repeat(50000)}.1`, 'C1.1']] });
+  assert.equal(long.errors[0].code, 'MISSING_COMPONENT');
+  assert.equal(long.errors[0].fix, undefined);
+});
+
+test('duplicate connections are found inside long buses too, without comparing every pair', () => {
+  const comps = Array.from({ length: 20 }, (_, i) => ({ id: `R${i}`, type: 'resistor' }));
+  const bus = Array.from({ length: 12 }, (_, i) => `R${i}.1`);
+  const dup = validate({ components: comps, connections: [bus, ['R0.1', 'R5.1']] }).warnings.filter((w) => w.code === 'DUPLICATE_CONNECTION');
+  assert.equal(dup.length, 1);
+  assert.match(dup[0].message, /R0\.1 and R5\.1/);
+  assert.equal(validate({ components: comps, connections: [['R0.1', 'R1.1'], ['R2.1', 'R3.1']] }).warnings.filter((w) => w.code === 'DUPLICATE_CONNECTION').length, 0);
+  // an overflow is summarised rather than silently dropped
+  const flood = validate({ components: comps, connections: Array.from({ length: 60 }, () => ['R0.1', 'R1.1']) }).warnings.filter((w) => w.code === 'DUPLICATE_CONNECTION');
+  assert.equal(flood.length, 26);
+  assert.match(flood.at(-1).message, /more duplicate connections not shown/);
+});
+
+test('value parsing cannot be stalled by a hostile string', () => {
+  const t0 = Date.now();
+  for (const bad of ['1' + 'dc'.repeat(40000) + 'x', '9'.repeat(100000), '1' + 'p-p'.repeat(30000), 'x'.repeat(100000)]) assert.equal(parseValue(bad), null);
+  assert.ok(Date.now() - t0 < 200, `${Date.now() - t0} ms`);
+  // qualifiers apply to SPICE "meg" values as well
+  assert.equal(parseValue('1Meg typ'), 1e6);
+  assert.equal(parseValue('4.7MEGohm max'), 4.7e6);
 });

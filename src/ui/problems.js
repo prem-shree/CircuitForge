@@ -37,7 +37,7 @@ export function initProblems(app) {
       ...warnings.map((w) => ({ ...w, level: 'warning' })),
     ];
     // syntax errors already carry their own line; the index is only built when something needs one
-    if (all.some((p) => p.path && !p.line)) annotateLines(all, state.text, wrapped ? ['circuit'] : [], locator());
+    annotateLines(all, state.text, wrapped ? ['circuit'] : [], locator);
     state.problems = all;
     const list = $('#problems-list');
     list.textContent = '';

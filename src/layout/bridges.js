@@ -8,14 +8,17 @@ const DIODES = new Set(['diode', 'led', 'zener', 'schottky', 'photodiode']);
 const METERS = new Set(['voltmeter', 'ammeter']);
 
 // Parts that may sit on a diamond edge: two pins on two different nets and a
-// sensible length. A part with a position *and* a rotation may join too (that is
-// exactly what freezing a diamond writes into the JSON, see pinLayout, and it has to
-// keep being recognised or the diamond would fall apart at the first edit), but
-// detectBridges then only keeps the diamond if every saved rotation is the one the
-// geometry would choose; a ring the user laid out by hand is left alone.
-function eligible(p) {
+// sensible length. There are two modes, and a diamond is built from one of them only:
+//   "free"   no position, rotation or mirror set by the user (the layout decides);
+//   "frozen" a position *and* a rotation on every member, which is what freezing a
+//            diamond writes into the JSON (see pinLayout). It has to keep being
+//            recognised or the diamond would fall apart at the first edit.
+// A ring that is only partly pinned, or hand-laid with other rotations, matches
+// neither mode and is left exactly as the user placed it.
+function eligible(p, mode) {
   if (!p.sym.twoTerminal || p.sym.source || p.comp.mirror) return false;
-  if ((p.comp.position !== undefined) !== (p.comp.rotation !== undefined)) return false; // half-specified: the user's own arrangement
+  const pinned = p.comp.position !== undefined, rotated = p.comp.rotation !== undefined;
+  if (mode === 'free' ? (pinned || rotated) : !(pinned && rotated)) return false;
   const [a, b] = p.sym.pinOrder;
   if (!p.pinNets[a] || !p.pinNets[b] || p.pinNets[a] === p.pinNets[b]) return false;
   const la = p.sym.pins[a], lb = p.sym.pins[b];
@@ -24,7 +27,12 @@ function eligible(p) {
 }
 
 export function detectBridges(parts, nets) {
-  const cand = parts.filter(eligible);
+  // the modes pick disjoint parts, so their diamonds never share one
+  return [...detect(parts, nets, 'free'), ...detect(parts, nets, 'frozen').filter(matchesSavedLayout)];
+}
+
+function detect(parts, nets, mode) {
+  const cand = parts.filter((p) => eligible(p, mode));
   const isRail = (n) => !!nets?.get(n)?.rail;
   const onNet = new Map();
   for (const p of cand) {
@@ -74,15 +82,14 @@ export function detectBridges(parts, nets) {
       }
     }
   }
-  return found.map(geometry).filter(matchesSavedLayout);
+  return found.map((b) => geometry(b, mode));
 }
 
-// A diamond whose parts are pinned is only a diamond if the saved rotations are the
-// ones its geometry gives (within rounding).
+// A frozen diamond is only a diamond if the saved rotations are the ones its geometry
+// gives (within rounding); anything else is the user's own arrangement.
 function matchesSavedLayout(cluster) {
   return cluster.members.every((m) => {
     const saved = m.part.comp.rotation;
-    if (saved === undefined) return true;
     const d = Math.abs(normAngle(saved) - m.rot) % 360;
     return Math.min(d, 360 - d) < 0.01;
   });
@@ -109,7 +116,7 @@ function edgePlacement(part, pa, pb, A, B) {
   };
 }
 
-function geometry(b) {
+function geometry(b, mode) {
   const [n0, n1, n2, n3] = b.nets;
   const hasSource = (list) => list.some((p) => p.sym.source);
   // the pair fed by the source goes top/bottom, the output pair left/right
@@ -126,7 +133,7 @@ function geometry(b) {
   // A single detector across the side corners sits inside the diamond
   // (Wheatstone); a rectifier's load stays outside.
   const det = hAcross.length === 1 ? hAcross[0] : null;
-  const inner = det && eligible(det) && Object.keys(det.pinNets).length === 2
+  const inner = det && eligible(det, mode) && Object.keys(det.pinNets).length === 2
     && (METERS.has(det.sym.type) || b.ring.every((p) => !DIODES.has(p.sym.type))) ? det : null;
   const h = inner ? 80 : 50;
   const corners = {

@@ -94,13 +94,20 @@ export function indexJSON(text) {
   };
 }
 
+// An index built on first use and then shared: a caller that may annotate several lists
+// of problems for the same text pays for the scan once, and only if a line is needed.
+export function lazyIndex(text) {
+  let idx = null;
+  return () => (idx ||= indexJSON(text));
+}
+
 // Add line/column to every problem that carries a path, when the text is known.
 // `root` is the path of the circuit inside the text (['circuit'] for an API envelope).
-// `index` may be passed to reuse an index already built for this text.
+// `index` may be an index already built for this text, or a function returning one (see lazyIndex).
 export function annotateLines(problems, text, root = [], index = null) {
   const need = problems.filter((p) => p.path && !p.line);
   if (!need.length) return problems; // syntax errors carry their own line; nothing to look up
-  const idx = index || indexJSON(text);
+  const idx = typeof index === 'function' ? index() : index || indexJSON(text);
   for (const p of need) {
     const at = idx.locate([...root, ...parsePath(p.path)]);
     if (at) { p.line = at.line; p.column = at.column; }

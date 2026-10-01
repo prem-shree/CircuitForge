@@ -26,10 +26,9 @@ export const LIMITS = {
 };
 
 // Work bounds inside the validator itself, so a hostile document costs a fixed
-// amount however it is shaped: "did you mean" searches are limited, and
-// duplicate-connection detection only compares pairs within short connections.
+// amount however it is shaped: "did you mean" searches are limited in number (and,
+// in suggest.js, in the length of what they compare).
 const MAX_SUGGESTIONS = 40;
-const MAX_PAIR_CHECK = 8;     // endpoints per connection compared pair by pair
 const MAX_DUPLICATE_WARNINGS = 25;
 
 const TOP_KEYS = ['$schema', 'version', 'title', 'name', 'description', 'metadata', 'layout', 'validation', 'simulation', 'education', 'components', 'connections', 'nets', 'junctions', 'annotations', 'measurements', 'bom', 'notes'];
@@ -67,6 +66,7 @@ export function validateCircuit(input, options = {}) {
   };
 
   let suggestions = 0;
+  let truncated = false; // stopped early at the error cap: later passes would be working from a partial picture
   const suggest = (fn) => (suggestions++ < MAX_SUGGESTIONS ? fn() : null);
   const { circuit, errors: parseErrors, wrapped } = parseCircuit(input);
   if (parseErrors.length) return { valid: false, errors: parseErrors, warnings, circuit: null };
@@ -91,9 +91,15 @@ export function validateCircuit(input, options = {}) {
     return finish(circuit);
   }
 
-  if (Array.isArray(circuit.connections)) {
+  {
+    // everything that names pins counts: the connection lists and the "nets" form
+    const lists = [...(Array.isArray(circuit.connections) ? circuit.connections : []), ...(isObject(circuit.nets) ? Object.values(circuit.nets) : [])];
+    if (lists.length > limits.connections) {
+      error('LIMIT_EXCEEDED', `The circuit has ${lists.length} connections and nets together; the limit is ${limits.connections}.`, { path: 'connections' });
+      return finish(circuit);
+    }
     let total = 0;
-    for (const c of circuit.connections) total += Array.isArray(c) ? c.length : Array.isArray(c?.pins) ? c.pins.length : 2;
+    for (const c of lists) total += Array.isArray(c) ? c.length : Array.isArray(c?.pins) ? c.pins.length : 2;
     if (total > limits.endpoints) {
       error('LIMIT_EXCEEDED', `The connections name ${total} pins in total; the limit is ${limits.endpoints}. Split the circuit into sub-circuits.`, { path: 'connections' });
       return finish(circuit);
@@ -167,7 +173,7 @@ export function validateCircuit(input, options = {}) {
   const paths = new Map(); // id -> JSON path of the component
   const allIds = circuit.components.map((c) => (isObject(c) && typeof c.id === 'string' ? c.id : null)).filter(Boolean);
   circuit.components.forEach((c, i) => {
-    if (errors.length > limits.errors) return; // the list is cut off anyway
+    if (errors.length > limits.errors) { truncated = true; return; } // the list is cut off anyway
     const path = `components[${i}]`;
     if (!isObject(c)) {
       error('INVALID_SCHEMA', `Component #${i + 1} must be an object like { "id": "R1", "type": "resistor" }, not ${describe(c)}.`, { path });
@@ -281,13 +287,14 @@ export function validateCircuit(input, options = {}) {
 
   // ---- connections
   const connections = [];
-  const seenPairs = new Set();
-  let duplicateWarnings = 0;
+  let duplicateWarnings = 0, duplicates = 0;
+  const pinConns = new Map(); // pin -> indices of the connections that name it
+  let connIndex = 0;
   const connectedPins = new Map(); // id -> Set(pin)
   const mentioned = new Set(); // ids referenced by any connection, valid or not
   const inBadConnection = new Set(); // ids in a connection that failed: the pin is wired, just wrongly
   for (const conn of normalizeConnections(circuit)) {
-    if (errors.length > limits.errors) break;
+    if (errors.length > limits.errors) { truncated = true; break; }
     const { path } = conn;
     if (!Array.isArray(conn.refs)) {
       error('INVALID_CONNECTION', `${path} must be an array of pin references like ["R1.1", "C1.2"].`, { path });
@@ -312,8 +319,9 @@ export function validateCircuit(input, options = {}) {
       }
       mentioned.add(ref.comp);
       if (!comps.has(ref.comp)) {
-        // default tolerance: a two-letter id such as "R5" must not be "corrected" to "R1"
-        const s = suggest(() => closest(ref.comp, allIds));
+        // Designators such as R1/R12/R13 differ by a digit, which is a different part, not a typo:
+        // only a case slip (or, for long names, one edit) is suggested.
+        const s = suggest(() => closest(ref.comp, allIds, ref.comp.length >= 6 ? 1 : 0));
         error('MISSING_COMPONENT', `Connection references missing component "${ref.comp}" (${raw}).${didYouMean(s)}`, {
           component: ref.comp, ref: raw, path: at,
           ...(s ? { fix: { label: `Use "${s}" instead`, path: at, value: ref.pin == null ? s : `${s}.${ref.pin}` } } : {}),
@@ -352,15 +360,22 @@ export function validateCircuit(input, options = {}) {
       error('INVALID_CONNECTION', `${path} connects a pin to itself (${keys.join(', ')}).`, { path });
       continue;
     }
-    // A short connection is checked pair by pair; a long bus only along its length,
-    // which keeps the cost linear however many pins it names.
-    const pairs = [];
-    if (keys.length <= MAX_PAIR_CHECK) { for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) pairs.push([keys[i], keys[j]]); }
-    else for (let i = 1; i < keys.length; i++) pairs.push([keys[i - 1], keys[i]]);
-    for (const [a, b] of pairs) {
-      const pair = a < b ? `${a}|${b}` : `${b}|${a}`;
-      if (seenPairs.has(pair)) { if (duplicateWarnings++ < MAX_DUPLICATE_WARNINGS) warn('DUPLICATE_CONNECTION', `Duplicate connection between ${a} and ${b}.`, { path }); }
-      else seenPairs.add(pair);
+    // A pair listed twice: two pins that an earlier connection already joins. Found by
+    // counting, per earlier connection, how many of these pins it names (linear in the
+    // pins, however long the connections are).
+    const here = connIndex++;
+    const shared = new Map(); // earlier connection -> the first two of our pins it also names
+    for (const key of keys) {
+      for (const j of pinConns.get(key) || []) {
+        const seen = shared.get(j);
+        if (!seen) shared.set(j, [key]); else if (seen.length === 1) seen.push(key);
+      }
+      if (!pinConns.has(key)) pinConns.set(key, []);
+      pinConns.get(key).push(here);
+    }
+    for (const pair of shared.values()) {
+      if (pair.length < 2) continue;
+      if (duplicates++ < MAX_DUPLICATE_WARNINGS) warn('DUPLICATE_CONNECTION', `Duplicate connection between ${pair[0]} and ${pair[1]}.`, { path });
     }
     for (const e of ends) {
       if (!connectedPins.has(e.comp)) connectedPins.set(e.comp, new Set());
@@ -405,8 +420,9 @@ export function validateCircuit(input, options = {}) {
     connections.push({ ends, name: conn.name, path, class: conn.class, waypoints: pts(conn.waypoints, 'waypoints'), route, locked: conn.locked, label: conn.label });
   }
 
+  if (duplicates > MAX_DUPLICATE_WARNINGS) warn('DUPLICATE_CONNECTION', `${duplicates - MAX_DUPLICATE_WARNINGS} more duplicate connections not shown.`);
   for (const [id, entry] of comps) {
-    if (!entry) continue;
+    if (!entry || truncated) continue; // after an early stop, "not connected" would be a guess
     const used = connectedPins.get(id);
     if (!used) {
       if (!mentioned.has(id)) warn('UNCONNECTED_COMPONENT', `${id} is not connected to anything.`, { component: id, path: paths.get(id) });

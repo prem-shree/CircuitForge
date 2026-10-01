@@ -4,7 +4,7 @@
 import { render, validate } from '../engine.js';
 
 // 500 when the engine itself failed, otherwise the status for a problem with the caller's circuit
-const statusOf = (errors, ok = 422) => (errors.some((e) => e.code === 'INTERNAL_ERROR') ? 500 : ok);
+const statusOf = (errors) => (errors.some((e) => e.code === 'INTERNAL_ERROR') ? 500 : 422);
 const json = (status, obj) => ({ status, headers: { 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify(obj, null, 2) });
 
 export function handleRequest(req, { apiKeys = null } = {}) {

@@ -7,7 +7,7 @@
 // lead to that point, so wires still end exactly on the pin.
 import {
   DIRS, OPPOSITE, GRID, xform, xformVec, xformRect, rectPoly, rotateVec, vecToDir, unionRect, boundsOf, textWidth,
-  normAngle, inflate,
+  normAngle, inflate, snap,
 } from '../utils/geometry.js';
 
 export const REF_SIZE = 11;
@@ -76,7 +76,7 @@ export function makeInstance(part, x, y, rot, mirror, nets, cfg = {}) {
     const vec = xformVec(DIRS[lp.dir], t);
     let tip = exact;
     // tips are grid points by construction; snapping absorbs the rounding of a saved position
-    if (ov?.tips?.[n]) tip = { x: Math.round((x + ov.tips[n].dx) / GRID) * GRID, y: Math.round((y + ov.tips[n].dy) / GRID) * GRID };
+    if (ov?.tips?.[n]) tip = { x: snap(x + ov.tips[n].dx), y: snap(y + ov.tips[n].dy) };
     else if (!ortho || exact.x % GRID || exact.y % GRID) tip = outwardGridPoint(exact, vec);
     const dir = ov?.dirs?.[n] || vecToDir(vec);
     const exits = ov?.dirs?.[n] || ortho ? [dir] : exitsFor(vec);

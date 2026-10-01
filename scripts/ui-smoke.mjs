@@ -300,6 +300,30 @@ const selected = (page) => page.locator('.cf-part.selected').count();
   await w.locator('#problems-list .fix', { hasText: 'resistor' }).click();
   check('applying it works on the unwrapped circuit', /"type": "resistor"/.test(await text(w)) && (await w.locator('.cf-part').count()) === 2);
 
+  // starting over works even when the current text is broken (that is when it is needed)
+  const { page: n } = await open(example('01-led-resistor.json'));
+  await n.evaluate(() => { const t = document.querySelector('#json'); t.value = '{ "components": ['; t.dispatchEvent(new Event('input')); });
+  await n.click('[data-action=new]');
+  check('New replaces invalid text', JSON.parse(await text(n)).components.length === 0);
+  await n.evaluate(() => { const t = document.querySelector('#json'); t.value = '{ nope'; t.dispatchEvent(new Event('input')); });
+  await n.click('[data-menu=examples]');
+  await n.locator('#menu-examples button', { hasText: 'Voltage' }).first().click();
+  check('and so does loading an example', /Voltage/.test(await text(n)) && (await n.locator('.cf-part').count()) >= 3);
+
+  // an envelope keeps its sibling fields when the circuit inside is edited
+  const env = JSON.stringify({ theme: 'dark', allowDesignErrors: true, circuit: { components: [{ id: 'V1', type: 'dc_source', value: '5V' }, { id: 'R1', type: 'resistr' }], connections: [['V1.positive', 'R1.1'], ['R1.2', 'V1.negative']] } }, null, 2);
+  const { page: e2 } = await open(env, { svg: false });
+  await e2.locator('#problems-list .fix', { hasText: 'resistor' }).click();
+  const kept = await doc(e2);
+  check('an edited envelope keeps its other fields', kept.theme === 'dark' && kept.allowDesignErrors === true && kept.circuit.components[1].type === 'resistor');
+
+  // valid JSON that is not a circuit cannot be edited, and says why
+  const { page: z } = await open('null', { svg: false });
+  await z.click('[data-action=library]');
+  await z.fill('#library-search', 'resistor');
+  await z.press('#library-search', 'Enter');
+  check('a non-circuit document refuses edits with a reason', /not a circuit object/.test(await z.textContent('#toast')));
+
   // clearing X and Y means "place automatically", never "move to 0"
   const { page: x } = await open(example('08-bjt-amplifier.json'));
   const r = await centre(x, '.cf-part[data-id="R1"]');

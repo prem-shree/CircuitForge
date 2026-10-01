@@ -313,3 +313,15 @@ test('a hand-laid bridge ring is not pulled back into a diamond', () => {
     assert.deepEqual([I.x, I.y, I.rot], [x, y, rot], `${id} stays where it was put`);
   }
 });
+
+test('a partly pinned bridge keeps every pinned part exactly where it was put', () => {
+  const base = ex['28-wheatstone-bridge.json'];
+  const place = (id, x, y, rot) => { const d = clone(base); const c = d.components.find((q) => q.id === id); c.position = { x, y }; c.rotation = rot; return scene(d); };
+  // the detector pinned alone, then one ring part pinned alone: neither may be placed twice or moved
+  const g = place('G1', 500, 300, 0).instances.get('G1');
+  assert.deepEqual([g.x, g.y, g.rot], [500, 300, 0]);
+  const r = place('R1', 300, 30, 135).instances.get('R1');
+  assert.deepEqual([r.x, r.y, r.rot], [300, 30, 135]);
+  // and the drawing still routes
+  assert.equal(place('G1', 500, 300, 0).layoutInfo.failures, 0);
+});

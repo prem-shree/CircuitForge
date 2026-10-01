@@ -36,7 +36,15 @@ Found by reading the code, probing it with hostile input and mutation-fuzzing th
 | A measurement at `R1.constructor` produced NaN coordinates; `U1.P0.1` was cut at the first dot; pin aliases were ignored | Own-property lookup, first-dot split, aliases resolved |
 | A short id such as `R5` was "corrected" to an unrelated part (`R1`) with a one-click fix | Short ids only suggest case-slips |
 | The validator's cost was not bounded by its limits (a 500-pin bus of 1500 parts took seconds, thousands of bad references more) | Total-pin limit, suggestion budget, linear duplicate detection, early exit at the error cap, warning cap |
-| `12Vdc`, `5Vrms`, `1Meg` were reported as unreadable values | Everyday qualifiers and SPICE `meg` are understood |
+| `12Vdc`, `5Vrms`, `1Meg` were reported as unreadable values | Everyday qualifiers and SPICE `meg` are understood (parsing is linear and length-bounded; a 40,000-fragment string used to take seconds) |
+| A bridge ring with only some parts pinned could place a pinned part twice and move it | Free and frozen diamonds are separate modes; anything else is left exactly as placed |
+| The `nets` form bypassed the connection and pin limits | Counted together with `connections` |
+| Duplicate-connection detection skipped non-adjacent pairs in long buses and dropped overflow silently | Linear detection by shared connections, with a "N more not shown" note |
+| After the error cap the validator reported parts as "not connected" from a partial picture | Those passes are skipped once it has stopped early |
+| Starting over (New, an example) was blocked while the text had a syntax error | Replacing the whole document always works; edits are what is refused |
+| Editing an API envelope dropped its sibling fields (`theme`, `allowDesignErrors`, …) | Written back inside the envelope |
+| `null` or `42` as the document made Auto layout and the spacing menu throw | Refused with a reason |
+| A "did you mean" fix could rewire to a different part (`R13` → `R1`) | Designators differing by a digit are never suggested; long names are not searched |
 | Ctrl+Z within 600 ms of typing ignored or jumped past the new text (it was not yet in the history) | Pending typing is recorded before undoing |
 
 `render()` and `validate()` never throw any more: an unexpected failure inside a stage comes back as an
@@ -98,10 +106,10 @@ category (it used to hide boards, sensors, displays and connectors).
 
 ### Tests and tooling
 
-- 89 → 167 unit tests: robustness with mutation fuzzing (structural and semantic, 350 cases per run), validation and
+- 89 → 172 unit tests: robustness with mutation fuzzing (structural and semantic, 350 cases per run), validation and
   the path locator, the symbol library (geometry, alias collisions, every type at every rotation), the editor model,
   history, selection, schema conformance, and a performance/quality suite with deterministic ceilings.
-- `npm run smoke`: 64 browser checks (optional; needs Playwright, which is not a dependency).
+- `npm run smoke`: 68 browser checks (optional; needs Playwright, which is not a dependency).
 - A CI workflow runs the tests and the build on every pull request (Node 20 and 22).
 
 ### Known limitations
