@@ -232,7 +232,9 @@ export function layoutCircuit(nl, circuit = {}, opts = {}) {
     const pos = p.comp.position;
     if (!pos) continue;
     const o = orient.get(p.id);
-    commit(at(p, pos.x, pos.y, o.rot, o.mirror));
+    // A bridge diamond's origin is off the grid by design (only its pin tips are on it),
+    // so a pinned one is placed exactly where the JSON says, not snapped.
+    commit(p.cluster ? makeInstance(p, pos.x, pos.y, o.rot, o.mirror, nets, cfg) : at(p, pos.x, pos.y, o.rot, o.mirror));
   }
 
   const group = (p) => (shunt(p) ? 0 : p.sym.pinOrder.length >= 3 ? 1 : 2);

@@ -32,6 +32,7 @@ export function indexJSON(text) {
       i++; ws();
       let n = 0;
       while (i < s.length && s[i] !== (isObj ? '}' : ']')) {
+        const before = i;
         let key = n;
         if (isObj) {
           key = JSON.parse(string());
@@ -42,6 +43,9 @@ export function indexJSON(text) {
         n++;
         ws();
         if (s[i] === ',') { i++; ws(); }
+        // Malformed text (a "}" closing an array, say) can leave the scanner where it
+        // was; stop rather than loop. The caller keeps whatever was indexed so far.
+        if (i === before) throw new Error('no progress');
       }
       i++;
     } else if (c === '"') string();
@@ -91,12 +95,14 @@ export function indexJSON(text) {
 }
 
 // Add line/column to every problem that carries a path, when the text is known.
-export function annotateLines(problems, text) {
-  if (!problems.length) return problems;
-  const index = indexJSON(text);
-  for (const p of problems) {
-    if (p.line || !p.path) continue;
-    const at = index.locate(p.path);
+// `root` is the path of the circuit inside the text (['circuit'] for an API envelope).
+// `index` may be passed to reuse an index already built for this text.
+export function annotateLines(problems, text, root = [], index = null) {
+  const need = problems.filter((p) => p.path && !p.line);
+  if (!need.length) return problems; // syntax errors carry their own line; nothing to look up
+  const idx = index || indexJSON(text);
+  for (const p of need) {
+    const at = idx.locate([...root, ...parsePath(p.path)]);
     if (at) { p.line = at.line; p.column = at.column; }
   }
   return problems;

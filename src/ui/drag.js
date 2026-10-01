@@ -56,6 +56,7 @@ export function initDrag(app) {
 
   return {
     start(ids, primary) {
+      if (!app.sync()) return;
       const scene = app.scene();
       if (!scene || !state.circuit) return;
       const list = ids.filter((id) => scene.instances.has(id));

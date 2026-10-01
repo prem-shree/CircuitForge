@@ -2,10 +2,17 @@
 const PREFIX = { p: 1e-12, n: 1e-9, u: 1e-6, µ: 1e-6, μ: 1e-6, m: 1e-3, k: 1e3, K: 1e3, M: 1e6, G: 1e9, R: 1, r: 1 };
 const UNITS = 'Ω|ohm|ohms|F|H|V|A|W|Hz|s';
 
+// Words often glued to a value: "12Vdc", "5Vrms", "5Vpp", "100mVp-p", "3.3V typ".
+const QUALIFIER = /(?:dc|ac|rms|pp|p-p|pk|peak|max|min|typ|nom)+$/i;
+
 export function parseValue(raw) {
   if (raw == null) return null;
   if (typeof raw === 'number') return Number.isFinite(raw) ? raw : null;
-  const s = String(raw).trim().replace(/\s+/g, '');
+  let s = String(raw).trim().replace(/\s+/g, '');
+  // SPICE writes mega as "meg" (a bare "m" is milli): 1Meg, 4.7MEGohm
+  const mega = new RegExp(`^([+-]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][+-]?\\d+)?)meg(?:${UNITS})?$`, 'i').exec(s);
+  if (mega) return Number(mega[1]) * 1e6;
+  s = s.replace(QUALIFIER, '');
   // 4k7 / 1R2 style
   let m = new RegExp(`^([+-]?\\d+)([pnuµμmkKMGRr])(\\d+)(?:${UNITS})?$`).exec(s);
   if (m) return (Number(m[1]) + Number('0.' + m[3])) * PREFIX[m[2]];

@@ -4,6 +4,7 @@
 import { RULE_HELP } from '../engine.js';
 import { annotateLines, indexJSON } from '../parser/locate.js';
 import { applyFix } from '../editor/model.js';
+import { parsePath } from '../utils/path.js';
 import { state, $, esc } from './state.js';
 
 let index = null, indexText = null;
@@ -18,7 +19,7 @@ export function initProblems(app) {
 
   // Select the JSON that a problem points at and scroll it into view.
   function goToSource(p) {
-    const at = p.path ? locator().locate(p.path) : null;
+    const at = p.path ? locator().locate([...(state.wrapped ? ['circuit'] : []), ...parsePath(p.path)]) : null;
     const line = p.line || at?.line;
     if (!line) return;
     const lines = state.text.split('\n');
@@ -29,13 +30,14 @@ export function initProblems(app) {
     textarea.scrollTop = Math.max(0, (line - 5) * 20);
   }
 
-  function show(errors, warnings, findings = []) {
+  function show(errors, warnings, findings = [], wrapped = false) {
     const all = [
       ...errors.map((e) => ({ ...e, level: 'error' })),
       ...findings.map((f) => ({ ...f, level: f.severity === 'error' ? 'error' : f.severity === 'info' ? 'info' : 'warning' })),
       ...warnings.map((w) => ({ ...w, level: 'warning' })),
     ];
-    annotateLines(all, state.text); // syntax errors already carry their own line
+    // syntax errors already carry their own line; the index is only built when something needs one
+    if (all.some((p) => p.path && !p.line)) annotateLines(all, state.text, wrapped ? ['circuit'] : [], locator());
     state.problems = all;
     const list = $('#problems-list');
     list.textContent = '';
@@ -67,6 +69,7 @@ export function initProblems(app) {
         b.title = 'Apply this correction to the JSON';
         b.addEventListener('click', (e) => {
           e.stopPropagation();
+          if (!app.sync()) return;
           const fixed = applyFix(state.circuit, p.fix);
           if (!fixed) return app.toast('That part of the document has changed; the fix no longer applies.', true);
           app.commit(fixed, { label: `Fix: ${p.fix.label}`, key: null });

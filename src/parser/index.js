@@ -119,6 +119,10 @@ export function normalizeConnections(circuit) {
   return list;
 }
 
+// An API envelope { "circuit": {…} } holds the circuit one level down.
+export const isEnvelope = (v) => !!v && typeof v === 'object' && !!v.circuit && !v.components;
+export const unwrapCircuit = (v) => (isEnvelope(v) ? v.circuit : v);
+
 export function parseCircuit(input) {
   if (typeof input === 'string') {
     const r = parseJSON(input);
@@ -126,7 +130,6 @@ export function parseCircuit(input) {
     input = r.value;
   }
   // Accept API-style envelopes: { circuit: {...} }
-  let wrapped = false;
-  if (input && typeof input === 'object' && input.circuit && !input.components) { input = input.circuit; wrapped = true; }
-  return { circuit: input, errors: [], wrapped };
+  const wrapped = isEnvelope(input);
+  return { circuit: unwrapCircuit(input), errors: [], wrapped };
 }

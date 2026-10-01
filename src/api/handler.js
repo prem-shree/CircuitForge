@@ -3,6 +3,8 @@
 // Used by server/server.mjs (Node) and by the in-page API explorer.
 import { render, validate } from '../engine.js';
 
+// 500 when the engine itself failed, otherwise the status for a problem with the caller's circuit
+const statusOf = (errors, ok = 422) => (errors.some((e) => e.code === 'INTERNAL_ERROR') ? 500 : ok);
 const json = (status, obj) => ({ status, headers: { 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify(obj, null, 2) });
 
 export function handleRequest(req, { apiKeys = null } = {}) {
@@ -22,7 +24,7 @@ export function handleRequest(req, { apiKeys = null } = {}) {
 
   if (path === '/api/v1/validate') {
     const v = validate(body.circuit);
-    return json(v.errors.some((e) => e.code === 'INTERNAL_ERROR') ? 500 : v.valid ? 200 : 422, v);
+    return json(v.valid ? 200 : statusOf(v.errors), v);
   }
   const format = String(body.format || 'svg').toLowerCase();
   if (format === 'png' || format === 'pdf' || format === 'jpeg') {
@@ -31,7 +33,7 @@ export function handleRequest(req, { apiKeys = null } = {}) {
   if (format !== 'svg' && format !== 'json') return json(400, { error: 'INVALID_FORMAT', message: 'format must be "svg" or "json".' });
   const r = render(body.circuit, { theme: body.theme === 'dark' ? 'dark' : 'light', bridges: !!body.bridges, background: body.transparent ? null : undefined });
   // Structural errors (nothing to draw) are the caller's problem, an internal error is ours.
-  if (!r.svg) return json(r.errors.some((e) => e.code === 'INTERNAL_ERROR') ? 500 : 422, { valid: false, errors: r.errors, warnings: r.warnings, findings: r.findings });
+  if (!r.svg) return json(statusOf(r.errors), { valid: false, errors: r.errors, warnings: r.warnings, findings: r.findings });
   // A design error (a shorted supply, a reversed diode) still has a drawing; say why it was
   // held back, and let the caller ask for it anyway with "allowDesignErrors": true.
   if (!r.valid && !body.allowDesignErrors) {

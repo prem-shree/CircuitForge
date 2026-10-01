@@ -361,6 +361,8 @@ export class Canvas {
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
     if (!g.moved && Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
     g.moved = true;
+    // a press that started on a wire is a click on it; once it moves it is a pan
+    if (g.type === 'wire') { g.type = 'pan'; g.clear = false; this.el.classList.add('panning'); }
     if (g.type === 'pan') {
       this.autoFit = false;
       this.tx = g.tx0 + dx; this.ty = g.ty0 + dy;

@@ -2,6 +2,8 @@
 //   components[2].type   connections[0][1]   nets.VOUT[0]   nets["V-OUT"]
 // A path is an array of segments (strings for keys, numbers for indices).
 
+import { has as hasOwn } from './safe.js';
+
 const IDENT = /^[A-Za-z0-9_$]+$/;
 
 export function formatPath(segments) {
@@ -23,9 +25,11 @@ export function parsePath(path) {
     if (c === '.') { i++; continue; }
     if (c === '[') {
       if (s[i + 1] === '"') {
+        // find the closing quote, skipping escaped characters (a key may end in a backslash)
         let j = i + 2;
-        while (j < s.length && !(s[j] === '"' && s[j - 1] !== '\\')) j++;
-        segs.push(JSON.parse(s.slice(i + 1, j + 1)));
+        while (j < s.length && s[j] !== '"') j += s[j] === '\\' ? 2 : 1;
+        const quoted = s.slice(i + 1, j + 1);
+        try { segs.push(JSON.parse(quoted)); } catch { segs.push(quoted.slice(1, -1)); }
         i = j + 2;
       } else {
         const j = s.indexOf(']', i);
@@ -43,7 +47,6 @@ export function parsePath(path) {
   return segs;
 }
 
-const hasOwn = (o, k) => o != null && Object.prototype.hasOwnProperty.call(o, k);
 
 export function getPath(root, path) {
   let cur = root;

@@ -1,5 +1,7 @@
 // Scene -> standalone, portable SVG string (no external CSS, no <use>).
 import { unionRect, boundsOf, overlaps, segHitsRect, textWidth } from '../utils/geometry.js';
+import { has } from '../utils/safe.js';
+import { resolvePin } from '../symbol-loader/index.js';
 
 export const THEMES = {
   light: { ink: '#1b1b1f', wire: '#1b1b1f', muted: '#55565c', junction: '#1b1b1f', background: '#ffffff' },
@@ -147,10 +149,14 @@ function anchorsOf(scene, spec) {
   const ref = typeof spec === 'string' ? spec : (spec.at ?? spec.component ?? spec.pin ?? spec.net ?? spec.target);
   if (Number.isFinite(ref?.x) && Number.isFinite(ref?.y)) return [{ x: ref.x, y: ref.y }];
   if (typeof ref === 'string') {
-    const [id, pin] = ref.split('.');
+    // split at the first dot only: a pin name may itself contain one ("P0.1")
+    const dot = ref.indexOf('.');
+    const id = dot < 0 ? ref : ref.slice(0, dot), pinName = dot < 0 ? '' : ref.slice(dot + 1);
     const I = scene.instances.get(id);
     if (I) {
-      if (pin && I.pins[pin]) return [{ ...I.pins[pin] }];
+      // canonical pin name (aliases such as "A" for "anode" work), looked up as an own property only
+      const pin = pinName && resolvePin(I.part.sym, pinName);
+      if (pin && has(I.pins, pin)) return [{ ...I.pins[pin] }];
       return [{ x: I.body.x + I.body.w / 2, y: I.body.y - 10 }];
     }
     for (const [nid, net] of scene.netlist.nets) {

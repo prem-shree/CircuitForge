@@ -9,35 +9,49 @@ import { selectionBounds, cycleSelection, describeIds, partsInRect } from '../ed
 import { state } from './state.js';
 
 export function initCommands(app) {
-  const ready = () => state.selection.length > 0 && app.scene() && state.circuit;
+  // Something selected, and the document in a state where editing is safe.
+  const ready = () => state.selection.length > 0 && app.sync() && !!app.scene() && !!state.circuit;
   const ids = () => [...state.selection];
   let pasteCount = 0;
 
+  function pasteSnippet(snippet) {
+    pasteCount++;
+    const step = 40 * pasteCount;
+    // parts that have positions land beside the copy; auto-laid-out circuits place them themselves
+    const { circuit, ids: added } = pasteSubcircuit(state.circuit, snippet, { x: step, y: step });
+    if (!added.length) return false;
+    app.commit(circuit, { label: `Paste ${describeIds(added)}`, key: null, select: added });
+    app.toast(`Pasted ${describeIds(added)}`);
+    return true;
+  }
+
   const cmd = {
     rotate(step = 90) {
-      if (!ready()) return;
+      if (!ready()) return false;
       const list = ids();
       app.commit(rotateComponents(state.circuit, app.scene().instances, list, step), { label: `Rotate ${describeIds(list)}`, key: `rotate:${list.join(',')}`, select: list });
     },
 
     flip() {
-      if (!ready()) return;
+      if (!ready()) return false;
       const list = ids();
       app.commit(mirrorComponents(state.circuit, app.scene().instances, list), { label: `Flip ${describeIds(list)}`, key: null, select: list });
     },
 
     remove() {
-      if (!ready()) return;
+      if (!ready()) return false;
       const list = ids();
       app.commit(deleteComponents(state.circuit, list), { label: `Delete ${describeIds(list)}`, key: null, select: [] });
       app.toast(`Deleted ${describeIds(list)}`);
+      return true;
     },
 
     duplicate() {
-      if (!ready()) return;
+      if (!ready()) return false;
       const { circuit, ids: copies } = duplicateComponents(state.circuit, app.scene().instances, ids());
       app.commit(circuit, { label: `Duplicate ${describeIds(ids())}`, key: null, select: copies });
       app.toast(`Duplicated as ${describeIds(copies)}`);
+      return true;
     },
 
     copy() {
@@ -51,26 +65,34 @@ export function initCommands(app) {
       return true;
     },
 
-    cut() { if (cmd.copy()) cmd.remove(); },
+    cut() { return cmd.copy() ? cmd.remove() : false; },
 
+    // Paste what was copied here; failing that, a selection copied in another tab or
+    // window (only where the browser lets a page read the clipboard). Returns false
+    // when there is nothing to paste, so the key press keeps its normal meaning.
     paste() {
-      if (!state.clipboard || !state.circuit) return app.toast('Nothing to paste. Select parts and press Ctrl+C first.', true);
-      pasteCount++;
-      const step = 40 * pasteCount;
-      // parts that have positions land beside the copy; auto-laid-out circuits place them themselves
-      const { circuit, ids: added } = pasteSubcircuit(state.circuit, state.clipboard, { x: step, y: step });
-      app.commit(circuit, { label: `Paste ${describeIds(added)}`, key: null, select: added });
-      app.toast(`Pasted ${describeIds(added)}`);
+      if (!app.sync() || !state.circuit) return false;
+      if (state.clipboard) return pasteSnippet(state.clipboard);
+      if (!navigator.clipboard?.readText) return false;
+      Promise.resolve(navigator.clipboard.readText()).then((text) => {
+        let snippet = null;
+        try { snippet = JSON.parse(text); } catch { /* not JSON */ }
+        if (snippet?.format === 'circuitforge-selection') pasteSnippet(snippet);
+        else app.toast('Nothing to paste. Select parts and press Ctrl+C first.', true);
+      }).catch(() => app.toast('Nothing to paste: copy some parts first (the browser did not allow reading the clipboard).', true));
+      return true;
     },
 
     selectAll() {
       const scene = app.scene();
-      if (scene) app.select([...scene.instances.keys()]);
+      if (!scene) return false;
+      app.select([...scene.instances.keys()]);
+      return true;
     },
 
     // Arrow keys: one grid step (10 px); with shift, four.
     nudge(dx, dy) {
-      if (!ready()) return;
+      if (!ready()) return false;
       const list = ids();
       app.commit(moveComponents(state.circuit, app.scene().instances, list, dx, dy), { label: `Move ${describeIds(list)}`, key: `nudge:${list.join(',')}`, select: list });
     },
@@ -100,6 +122,7 @@ export function initCommands(app) {
 
     // Wiring tool: first click picks a pin, the second joins the two.
     pinClick(ref, pos) {
+      if (!app.sync()) return;
       const scene = app.scene();
       if (!scene || !state.circuit) return;
       const pending = state.pending;
@@ -129,7 +152,7 @@ export function initCommands(app) {
 
     // Components dialog: drop a new part in the middle of the view.
     addPart(type) {
-      if (!state.circuit) return null;
+      if (!app.sync() || !state.circuit) return null;
       const scene = app.scene();
       const at = scene ? app.canvas.centerWorld() : null;
       const { circuit, id } = addComponent(state.circuit, type, { at, instances: scene?.instances });

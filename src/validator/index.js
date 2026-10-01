@@ -7,7 +7,7 @@
 //   fix   { label, path, value } — a one-step correction the editor can apply
 import { parseCircuit, normalizeConnections, parseRef } from '../parser/index.js';
 import { canonicalType, resolveSymbol, resolvePin, listTypes, pinSpecProblems, UNSUPPORTED_TYPES } from '../symbol-loader/index.js';
-import { normAngle } from '../utils/geometry.js';
+import { normAngle, snap } from '../utils/geometry.js';
 import { RESERVED_NAMES, MAX_COORD, isObject, has } from '../utils/safe.js';
 import { formatPath } from '../utils/path.js';
 import { SPACING_PRESETS } from '../layout/config.js';
@@ -20,8 +20,17 @@ export const LIMITS = {
   components: 1500,
   connections: 6000,
   endpointsPerConnection: 500,
+  endpoints: 20000, // pins named by all connections together
   errors: 100, // problems reported before the list is cut off
+  warnings: 300,
 };
+
+// Work bounds inside the validator itself, so a hostile document costs a fixed
+// amount however it is shaped: "did you mean" searches are limited, and
+// duplicate-connection detection only compares pairs within short connections.
+const MAX_SUGGESTIONS = 40;
+const MAX_PAIR_CHECK = 8;     // endpoints per connection compared pair by pair
+const MAX_DUPLICATE_WARNINGS = 25;
 
 const TOP_KEYS = ['$schema', 'version', 'title', 'name', 'description', 'metadata', 'layout', 'validation', 'simulation', 'education', 'components', 'connections', 'nets', 'junctions', 'annotations', 'measurements', 'bom', 'notes'];
 const LAYOUT_KEYS = ['spacing', 'bridges', 'optimize', 'grid', 'componentGap', 'wireGap', 'labelGap', 'sectionGap', 'direction'];
@@ -49,9 +58,16 @@ export function validateCircuit(input, options = {}) {
       errors.length = limits.errors;
       errors.push({ code: 'TOO_MANY_ERRORS', message: `${more} more error${more > 1 ? 's' : ''} not shown. Fix the ones above first.` });
     }
+    if (warnings.length > limits.warnings) {
+      const more = warnings.length - limits.warnings;
+      warnings.length = limits.warnings;
+      warnings.push({ code: 'TOO_MANY_WARNINGS', message: `${more} more warning${more > 1 ? 's' : ''} not shown.` });
+    }
     return { valid: errors.length === 0, errors, warnings, circuit, wrapped, ...extra };
   };
 
+  let suggestions = 0;
+  const suggest = (fn) => (suggestions++ < MAX_SUGGESTIONS ? fn() : null);
   const { circuit, errors: parseErrors, wrapped } = parseCircuit(input);
   if (parseErrors.length) return { valid: false, errors: parseErrors, warnings, circuit: null };
 
@@ -73,6 +89,15 @@ export function validateCircuit(input, options = {}) {
   if (Array.isArray(circuit.connections) && circuit.connections.length > limits.connections) {
     error('LIMIT_EXCEEDED', `The circuit has ${circuit.connections.length} connections; the limit is ${limits.connections}.`, { path: 'connections' });
     return finish(circuit);
+  }
+
+  if (Array.isArray(circuit.connections)) {
+    let total = 0;
+    for (const c of circuit.connections) total += Array.isArray(c) ? c.length : Array.isArray(c?.pins) ? c.pins.length : 2;
+    if (total > limits.endpoints) {
+      error('LIMIT_EXCEEDED', `The connections name ${total} pins in total; the limit is ${limits.endpoints}. Split the circuit into sub-circuits.`, { path: 'connections' });
+      return finish(circuit);
+    }
   }
 
   // ---- optional top-level blocks (metadata, layout, teaching material, …)
@@ -142,6 +167,7 @@ export function validateCircuit(input, options = {}) {
   const paths = new Map(); // id -> JSON path of the component
   const allIds = circuit.components.map((c) => (isObject(c) && typeof c.id === 'string' ? c.id : null)).filter(Boolean);
   circuit.components.forEach((c, i) => {
+    if (errors.length > limits.errors) return; // the list is cut off anyway
     const path = `components[${i}]`;
     if (!isObject(c)) {
       error('INVALID_SCHEMA', `Component #${i + 1} must be an object like { "id": "R1", "type": "resistor" }, not ${describe(c)}.`, { path });
@@ -186,7 +212,7 @@ export function validateCircuit(input, options = {}) {
       return;
     }
     if (!canonicalType(c.type)) {
-      const s = suggestType(c.type);
+      const s = suggest(() => suggestType(c.type));
       error('UNKNOWN_TYPE', `Unknown component type "${c.type}" on ${id}.${didYouMean(s)}`, {
         component: id, type: c.type, path: `${path}.type`,
         ...(s ? { fix: { label: `Change type to "${s}"`, path: `${path}.type`, value: s } } : {}),
@@ -256,10 +282,12 @@ export function validateCircuit(input, options = {}) {
   // ---- connections
   const connections = [];
   const seenPairs = new Set();
+  let duplicateWarnings = 0;
   const connectedPins = new Map(); // id -> Set(pin)
   const mentioned = new Set(); // ids referenced by any connection, valid or not
   const inBadConnection = new Set(); // ids in a connection that failed: the pin is wired, just wrongly
   for (const conn of normalizeConnections(circuit)) {
+    if (errors.length > limits.errors) break;
     const { path } = conn;
     if (!Array.isArray(conn.refs)) {
       error('INVALID_CONNECTION', `${path} must be an array of pin references like ["R1.1", "C1.2"].`, { path });
@@ -284,7 +312,8 @@ export function validateCircuit(input, options = {}) {
       }
       mentioned.add(ref.comp);
       if (!comps.has(ref.comp)) {
-        const s = closest(ref.comp, allIds, 2);
+        // default tolerance: a two-letter id such as "R5" must not be "corrected" to "R1"
+        const s = suggest(() => closest(ref.comp, allIds));
         error('MISSING_COMPONENT', `Connection references missing component "${ref.comp}" (${raw}).${didYouMean(s)}`, {
           component: ref.comp, ref: raw, path: at,
           ...(s ? { fix: { label: `Use "${s}" instead`, path: at, value: ref.pin == null ? s : `${s}.${ref.pin}` } } : {}),
@@ -304,7 +333,7 @@ export function validateCircuit(input, options = {}) {
       } else {
         pin = resolvePin(sym, ref.pin);
         if (!pin) {
-          const s = closest(ref.pin, [...sym.pinOrder, ...Object.keys(sym.aliases)].map((n) => [n, sym.aliases[n.toLowerCase()] || n]));
+          const s = suggest(() => closest(ref.pin, [...sym.pinOrder, ...Object.keys(sym.aliases)].map((n) => [n, sym.aliases[n.toLowerCase()] || n])));
           error('INVALID_PIN', `Pin ${ref.pin} does not exist on ${sym.name.toLowerCase()} ${ref.comp}. Available: ${sym.pinOrder.join(', ')}.${didYouMean(s)}`, {
             component: ref.comp, pin: ref.pin, ref: raw, path: at,
             ...(s ? { fix: { label: `Use pin "${s}"`, path: at, value: `${ref.comp}.${s}` } } : {}),
@@ -323,10 +352,15 @@ export function validateCircuit(input, options = {}) {
       error('INVALID_CONNECTION', `${path} connects a pin to itself (${keys.join(', ')}).`, { path });
       continue;
     }
-    for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) {
-      const pair = [keys[i], keys[j]].sort().join('|');
-      if (seenPairs.has(pair)) warn('DUPLICATE_CONNECTION', `Duplicate connection between ${keys[i]} and ${keys[j]}.`, { path });
-      seenPairs.add(pair);
+    // A short connection is checked pair by pair; a long bus only along its length,
+    // which keeps the cost linear however many pins it names.
+    const pairs = [];
+    if (keys.length <= MAX_PAIR_CHECK) { for (let i = 0; i < keys.length; i++) for (let j = i + 1; j < keys.length; j++) pairs.push([keys[i], keys[j]]); }
+    else for (let i = 1; i < keys.length; i++) pairs.push([keys[i - 1], keys[i]]);
+    for (const [a, b] of pairs) {
+      const pair = a < b ? `${a}|${b}` : `${b}|${a}`;
+      if (seenPairs.has(pair)) { if (duplicateWarnings++ < MAX_DUPLICATE_WARNINGS) warn('DUPLICATE_CONNECTION', `Duplicate connection between ${a} and ${b}.`, { path }); }
+      else seenPairs.add(pair);
     }
     for (const e of ends) {
       if (!connectedPins.has(e.comp)) connectedPins.set(e.comp, new Set());
@@ -352,7 +386,7 @@ export function validateCircuit(input, options = {}) {
           error('INVALID_CONNECTION', `${where} has a point outside the sheet: x and y must be between -${MAX_COORD} and ${MAX_COORD}.`, { path: where });
           return null;
         }
-        out.push({ x: Math.round(x / 10) * 10, y: Math.round(y / 10) * 10 });
+        out.push({ x: snap(x, 10), y: snap(y, 10) });
       }
       return out.length ? out : null;
     };

@@ -217,3 +217,47 @@ test('buildScene mirrors render for invalid input', () => {
   assert.equal(scene, null);
   assert.equal(v.valid, false);
 });
+
+test('validation cost is bounded whatever the document looks like', () => {
+  const comps = Array.from({ length: 1500 }, (_, i) => ({ id: `R${i}`, type: 'resistor' }));
+  const timed = (c) => { const t0 = Date.now(); const r = validate(c); return { ms: Date.now() - t0, r }; };
+  // wide buses: every pin named, then pairs compared only along the bus
+  const bus = timed({ components: comps, connections: Array.from({ length: 30 }, () => Array.from({ length: 500 }, (_, j) => `R${j}.1`)) });
+  assert.ok(bus.ms < 1500, `buses: ${bus.ms} ms`);
+  // thousands of bad references: suggestions stop after a budget, errors after the cap
+  const bad = timed({ components: comps, connections: Array.from({ length: 20 }, (_, k) => Array.from({ length: 500 }, (_, j) => `Z${k}_${j}.1`)) });
+  assert.ok(bad.ms < 1500, `bad references: ${bad.ms} ms`);
+  assert.equal(bad.r.errors.length, LIMITS.errors + 1);
+  assert.equal(bad.r.warnings.at(-1).code, 'TOO_MANY_WARNINGS');
+  // more pins than the limit names in total is refused outright
+  const huge = timed({ components: comps, connections: Array.from({ length: 6000 }, () => Array.from({ length: 500 }, (_, j) => `R${j}.1`)) });
+  assert.ok(huge.ms < 200);
+  assert.ok(huge.r.errors.some((e) => e.code === 'LIMIT_EXCEEDED' && /in total/.test(e.message)));
+  // a long duplicate list cannot flood the warnings
+  const dup = validate({ components: comps.slice(0, 5), connections: Array.from({ length: 200 }, () => ['R0.1', 'R1.1']) });
+  assert.ok(dup.warnings.filter((w) => w.code === 'DUPLICATE_CONNECTION').length <= 25);
+});
+
+test('a short id is never "corrected" to a different part', () => {
+  const c = { components: ['V1', 'R1', 'C1', 'D1'].map((id, i) => ({ id, type: ['dc_source', 'resistor', 'capacitor', 'diode'][i] })), connections: [['V1.positive', 'X9.1'], ['R5.1', 'C1.1'], ['r1.1', 'C1.2']] };
+  const errs = validate(c).errors.filter((e) => e.code === 'MISSING_COMPONENT');
+  assert.equal(errs.length, 3);
+  assert.equal(errs[0].fix, undefined, 'X9 has no plausible match');
+  assert.equal(errs[1].fix, undefined, 'R5 is not R1');
+  assert.equal(errs[2].fix.value, 'R1.1', 'a case slip is corrected');
+});
+
+test('a measurement or annotation pointing at an inherited name draws no NaN', () => {
+  const c = minimal();
+  c.measurements = [{ at: 'R1.constructor', label: 'a' }, { at: 'R1.__proto__', label: 'b' }, { at: 'R1.toString' }];
+  c.annotations = [{ text: 'x', at: 'V1.hasOwnProperty' }];
+  const r = render(c);
+  assert.ok(r.svg && !/NaN|undefined|Infinity/.test(r.svg));
+  assert.ok(Number.isFinite(r.viewBox.x) && Number.isFinite(r.viewBox.w));
+  // pin aliases work, and pin names containing a dot are not cut short
+  const d = { components: [{ id: 'D1', type: 'led' }, { id: 'U1', type: 'generic_ic', pins: ['P0.1', 'P0.2'] }, { id: 'R1', type: 'resistor' }], connections: [['D1.A', 'R1.1'], ['U1.P0.1', 'R1.2']],
+    measurements: [{ at: 'D1.A', label: 'alias' }, { at: 'U1.P0.1', label: 'dotted' }] };
+  const out = render(d);
+  assert.deepEqual(out.errors, []);
+  assert.equal(out.svg.match(/cf-measurement/g).length, 2);
+});

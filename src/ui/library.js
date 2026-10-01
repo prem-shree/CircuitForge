@@ -2,7 +2,7 @@
 // type or alias. Clicking one drops it in the middle of the view.
 import { listTypes } from '../engine.js';
 import { resolveSymbol } from '../symbol-loader/index.js';
-import { $, $$, state } from './state.js';
+import { $, $$ } from './state.js';
 
 const CATEGORIES = {
   passive: 'Passive', semiconductor: 'Semiconductor', analog: 'Analog', digital: 'Digital', ic: 'ICs and modules',
@@ -48,7 +48,7 @@ export function initLibrary(app, commands) {
   }
 
   function add(type) {
-    if (!state.circuit) return app.toast('Fix the JSON syntax error first.', true);
+    if (!app.sync()) return;
     const sym = resolveSymbol({ type });
     $('#library-dialog').close();
     const id = commands.addPart(type);

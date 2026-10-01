@@ -281,6 +281,56 @@ const selected = (page) => page.locator('.cf-part.selected').count();
   check('the real routing runs on release', /"position"/.test(await text(big)) && (await big.locator('svg.ghosting').count()) === 0);
 }
 
+// ---------------------------------------------------------------- regressions found in review
+{
+  // editing while the text does not parse must not overwrite what is being typed
+  const { page } = await open(example('08-bjt-amplifier.json'));
+  const c = await centre(page, '.cf-part[data-id="R1"]');
+  await page.mouse.click(c.x, c.y);
+  await page.evaluate(() => { const t = document.querySelector('#json'); t.value = '// my unsaved notes {{{'; t.dispatchEvent(new Event('input')); });
+  await page.locator('#canvas').focus();
+  await page.keyboard.press('r');
+  check('an edit is refused while the JSON is invalid', /Fix the JSON syntax error/.test(await page.textContent('#toast')));
+  check('and the text being typed is left alone', (await text(page)) === '// my unsaved notes {{{');
+
+  // a pasted API envelope { "circuit": … } is editable and located
+  const wrapped = JSON.stringify({ circuit: { components: [{ id: 'V1', type: 'dc_source', value: '5V' }, { id: 'R1', type: 'resistr' }], connections: [['V1.positive', 'R1.1'], ['R1.2', 'V1.negative']] } }, null, 2);
+  const { page: w } = await open(wrapped, { svg: false });
+  check('an envelope gets its quick fix', (await w.locator('#problems-list .fix').count()) >= 1);
+  await w.locator('#problems-list .fix', { hasText: 'resistor' }).click();
+  check('applying it works on the unwrapped circuit', /"type": "resistor"/.test(await text(w)) && (await w.locator('.cf-part').count()) === 2);
+
+  // clearing X and Y means "place automatically", never "move to 0"
+  const { page: x } = await open(example('08-bjt-amplifier.json'));
+  const r = await centre(x, '.cf-part[data-id="R1"]');
+  await x.mouse.move(r.x, r.y); await x.mouse.down(); await x.mouse.move(r.x + 40, r.y + 40, { steps: 5 }); await x.mouse.up();
+  await x.fill('#inspector-form [name=x]', '');
+  await x.locator('#inspector-form [name=label]').focus();
+  check('one cleared coordinate changes nothing', !/"x": 0,/.test(await text(x)));
+  await x.fill('#inspector-form [name=y]', '');
+  await x.locator('#inspector-form [name=label]').focus();
+  const after = await doc(x);
+  check('both cleared removes just that part\'s position', !after.components.find((q) => q.id === 'R1').position && !!after.components.find((q) => q.id === 'R2').position);
+
+  // pressing on a wire and dragging pans the view instead of highlighting
+  const { page: p } = await open(example('08-bjt-amplifier.json'));
+  await p.keyboard.press('Escape');
+  const pt = await p.locator('.cf-wire-hit').first().evaluate((el) => {
+    const q = el.getPointAtLength(el.getTotalLength() / 2); const m = el.getScreenCTM();
+    return { x: m.a * q.x + m.c * q.y + m.e, y: m.b * q.x + m.d * q.y + m.f };
+  });
+  const t0 = await p.locator('#viewport').evaluate((el) => el.style.transform);
+  await p.mouse.move(pt.x, pt.y); await p.mouse.down(); await p.mouse.move(pt.x + 70, pt.y + 30, { steps: 5 }); await p.mouse.up();
+  check('dragging from a wire pans', (await p.locator('#viewport').evaluate((el) => el.style.transform)) !== t0 && (await p.locator('#wires path.net-hl').count()) === 0);
+
+  // the browser keeps its own Ctrl+C unless there is something to copy
+  const pressed = (page) => page.evaluate(() => { const e = new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, cancelable: true }); document.body.dispatchEvent(e); return e.defaultPrevented; });
+  check('Ctrl+C with nothing selected is left to the browser', (await pressed(p)) === false);
+  const q = await centre(p, '.cf-part[data-id="R1"]');
+  await p.mouse.click(q.x, q.y);
+  check('Ctrl+C with a part selected is handled', (await pressed(p)) === true);
+}
+
 await browser.close();
 for (const p of problems.filter((x) => /error/.test(x))) console.log(`  ${p}`);
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -167,7 +167,11 @@ test('text input gets line and column on every located problem', () => {
   assert.match(lines[pin.line - 1], /nope|R2\.9/);
   // objects carry no text, so no lines; wrapped envelopes are not annotated
   assert.equal(validate(JSON.parse(text)).errors[0].line, undefined);
-  assert.equal(validate(JSON.stringify({ circuit: JSON.parse(text) })).errors[0].line, undefined);
+  // an API envelope { "circuit": … } is located too, one level down
+  const wrapped = JSON.stringify({ circuit: JSON.parse(text) }, null, 2);
+  const env = validate(wrapped).errors.find((e) => e.code === 'UNKNOWN_TYPE');
+  assert.equal(env.path, 'components[1].type');
+  assert.match(wrapped.split('\n')[env.line - 1], /"type": "nope"/);
   // annotateLines is usable directly (the editor calls it on the textarea)
   const problems = annotateLines([{ path: 'components[1].id' }, { path: 'x' }, { message: 'no path' }], text);
   assert.match(lines[problems[0].line - 1], /"id": "R2"/);
@@ -198,4 +202,35 @@ test('render passes the same located problems through', () => {
   assert.equal(r.valid, false);
   assert.equal(r.errors[0].path, 'components[1].type');
   assert.equal(r.svg, null);
+});
+
+test('malformed text never hangs the locator, and syntax errors need no index', () => {
+  // each of these used to loop forever
+  for (const bad of ['[}', '[1,}', '{"a":[1,}', '{"components":[{"id":"R1"}}', '{"a": [}}]']) {
+    assert.doesNotThrow(() => indexJSON(bad), bad);
+    const r = validate(bad);
+    assert.equal(r.errors[0].code, 'INVALID_JSON', bad);
+    assert.ok(r.errors[0].line >= 1);
+  }
+  assert.equal(validate('{"circuit":"[}"}').valid, false);
+});
+
+test('paths survive keys that end in a backslash or contain quotes and dots', () => {
+  for (const key of ['a\\', 'say "hi"', 'x.y', 'a]b', '[0]']) {
+    assert.deepEqual(parsePath(formatPath(['nets', key, 0])), ['nets', key, 0], key);
+  }
+  const text = '{"components":[{"id":"R1","type":"resistor"}],"connections":[["R1.1","R9.1"]],"nets":{"a\\\\":["R1.1","R9.1"]}}';
+  const r = validate(text);
+  assert.ok(r.errors.some((e) => e.code === 'MISSING_COMPONENT'), 'the real error, not INTERNAL_ERROR');
+  assert.ok(!r.errors.some((e) => e.code === 'INTERNAL_ERROR'));
+});
+
+test('everyday value qualifiers and SPICE "meg" are numbers', () => {
+  for (const [v, n] of [['12Vdc', 12], ['5Vrms', 5], ['230 Vrms', 230], ['5Vpp', 5], ['100mVp-p', 0.1], ['3.3V typ', 3.3], ['1Meg', 1e6], ['4.7MEGohm', 4.7e6], ['5MV', 5e6], ['5mV', 0.005], ['1m', 0.001]]) {
+    assert.ok(Math.abs(parseValue(v) - n) <= Math.abs(n) * 1e-9, `${v} -> ${parseValue(v)}`);
+  }
+  assert.equal(parseValue('1..5k'), null);
+  assert.equal(parseValue('abc'), null);
+  const c = { components: [{ id: 'V1', type: 'dc_source', value: '12Vdc' }, { id: 'V2', type: 'ac_source', value: '230Vrms 50Hz' }, { id: 'R1', type: 'resistor', value: '1Meg' }], connections: [['V1.positive', 'R1.1'], ['R1.2', 'V2.positive'], ['V1.negative', 'V2.negative']] };
+  assert.deepEqual(validate(c).findings.filter((f) => f.code === 'INVALID_VALUE'), []);
 });

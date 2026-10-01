@@ -31,15 +31,16 @@ const failed = (stage, e) => ({ valid: false, errors: [crash(stage, e)], warning
 function locate(problems, v, text) {
   const paths = v.resolved?.paths;
   if (paths) for (const p of problems) if (!p.path && p.component && paths.has(p.component)) p.path = paths.get(p.component);
-  if (text !== null) annotateLines(problems, text);
+  // an API envelope { "circuit": {…} } puts every path one level down
+  if (text !== null) annotateLines(problems, text, v.wrapped ? ['circuit'] : []);
   return problems;
 }
-const textOf = (input, v) => (typeof input === 'string' && !v.wrapped ? input : null);
+const textOf = (input) => (typeof input === 'string' ? input : null);
 
 export function validate(input, options = {}) {
   try {
     const v = validateCircuit(input, options);
-    const text = textOf(input, v);
+    const text = textOf(input);
     if (!v.valid) return { valid: false, errors: locate(v.errors, v, text), warnings: locate(v.warnings, v, text), findings: [] };
     let findings = [];
     try {
@@ -107,7 +108,7 @@ export function render(input, options = {}) {
   const t0 = now();
   try {
     const v = validateCircuit(input, options);
-    const text = textOf(input, v);
+    const text = textOf(input);
     const { scene } = buildScene(input, v, options);
     if (!scene) return { valid: false, errors: locate(v.errors, v, text), warnings: locate(v.warnings, v, text), findings: [], svg: null };
     const out = renderSVG(scene, options);

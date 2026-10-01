@@ -273,3 +273,43 @@ test('LRU cache evicts the least recently used entry', () => {
   assert.equal(hashText('abc'), hashText('abc'));
   assert.notEqual(hashText(''), hashText(' '));
 });
+
+test('deleting or disconnecting never leaves a one-pin net behind', () => {
+  const c = { components: [{ id: 'R1', type: 'resistor' }, { id: 'R2', type: 'resistor' }, { id: 'R3', type: 'resistor' }], connections: [], nets: { OUT: ['R1.2', 'R2.1'], MID: ['R1.1', 'R2.2', 'R3.1'] } };
+  const gone = deleteComponent(c, 'R2');
+  assert.deepEqual(gone.nets, { MID: ['R1.1', 'R3.1'] }, 'OUT would have had one pin: removed');
+  assert.equal(validate(gone).errors.length, 0);
+  const cut = disconnectPin(c, 'R2.1');
+  assert.ok(!cut.nets.OUT);
+  assert.equal(validate(cut).errors.length, 0);
+  // an emptied "nets" block disappears entirely
+  assert.equal(deleteComponent({ components: [{ id: 'A', type: 'resistor' }, { id: 'B', type: 'resistor' }], nets: { X: ['A.1', 'B.1'] } }, 'A').nets, undefined);
+});
+
+test('freezing the layout reproduces every example exactly, bridge diamonds included', () => {
+  // any edit pins every part; the drawing must not shuffle when that happens
+  for (const [name, doc] of Object.entries(ex)) {
+    const before = scene(doc);
+    const after = scene(pinLayout(doc, before.instances));
+    for (const [id, I] of before.instances) {
+      const J = after.instances.get(id);
+      assert.ok(J, `${name}: ${id} survives`);
+      for (const [pin, p] of Object.entries(I.pins)) {
+        assert.ok(Math.abs(p.x - J.pins[pin].x) < 0.01 && Math.abs(p.y - J.pins[pin].y) < 0.01, `${name}: ${id}.${pin} moved ${p.x},${p.y} -> ${J.pins[pin].x},${J.pins[pin].y}`);
+      }
+    }
+    assert.equal(after.layoutInfo.failures, 0, `${name}: still routes`);
+  }
+});
+
+test('a hand-laid bridge ring is not pulled back into a diamond', () => {
+  // four resistors in a Wheatstone ring, each with its own position and rotation: the user's arrangement wins
+  const doc = clone(ex['28-wheatstone-bridge.json']);
+  const spots = { R1: [100, 100, 0], R2: [220, 100, 0], R3: [100, 200, 0], RX: [220, 200, 0] };
+  for (const c of doc.components) if (spots[c.id]) { c.position = { x: spots[c.id][0], y: spots[c.id][1] }; c.rotation = spots[c.id][2]; }
+  const s = scene(doc);
+  for (const [id, [x, y, rot]] of Object.entries(spots)) {
+    const I = s.instances.get(id);
+    assert.deepEqual([I.x, I.y, I.rot], [x, y, rot], `${id} stays where it was put`);
+  }
+});

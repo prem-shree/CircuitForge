@@ -7,10 +7,15 @@ import { normAngle, rotateVec } from '../utils/geometry.js';
 const DIODES = new Set(['diode', 'led', 'zener', 'schottky', 'photodiode']);
 const METERS = new Set(['voltmeter', 'ammeter']);
 
-// Parts that may sit on a diamond edge: two pins on two different nets, a
-// sensible length, and no position/rotation fixed by the user.
+// Parts that may sit on a diamond edge: two pins on two different nets and a
+// sensible length. A part with a position *and* a rotation may join too (that is
+// exactly what freezing a diamond writes into the JSON, see pinLayout, and it has to
+// keep being recognised or the diamond would fall apart at the first edit), but
+// detectBridges then only keeps the diamond if every saved rotation is the one the
+// geometry would choose; a ring the user laid out by hand is left alone.
 function eligible(p) {
-  if (!p.sym.twoTerminal || p.sym.source || p.comp.position || p.comp.rotation !== undefined || p.comp.mirror) return false;
+  if (!p.sym.twoTerminal || p.sym.source || p.comp.mirror) return false;
+  if ((p.comp.position !== undefined) !== (p.comp.rotation !== undefined)) return false; // half-specified: the user's own arrangement
   const [a, b] = p.sym.pinOrder;
   if (!p.pinNets[a] || !p.pinNets[b] || p.pinNets[a] === p.pinNets[b]) return false;
   const la = p.sym.pins[a], lb = p.sym.pins[b];
@@ -69,7 +74,18 @@ export function detectBridges(parts, nets) {
       }
     }
   }
-  return found.map(geometry);
+  return found.map(geometry).filter(matchesSavedLayout);
+}
+
+// A diamond whose parts are pinned is only a diamond if the saved rotations are the
+// ones its geometry gives (within rounding).
+function matchesSavedLayout(cluster) {
+  return cluster.members.every((m) => {
+    const saved = m.part.comp.rotation;
+    if (saved === undefined) return true;
+    const d = Math.abs(normAngle(saved) - m.rot) % 360;
+    return Math.min(d, 360 - d) < 0.01;
+  });
 }
 
 // Put pin `pa` on corner A and pin `pb` on corner B, centred on the edge, with

@@ -25,6 +25,18 @@ Found by reading the code, probing it with hostile input and mutation-fuzzing th
 | Rail-marker text (`+3V3`) was drawn bold (it inherited the wire stroke) | Fixed |
 | Two adjacent pins tied to the same rail each got their own overlapping supply symbol | They share one marker and a junction dot |
 | Pressing Enter in the component search added the part and then reopened the dialog | Fixed |
+| The first edit of a Wheatstone-bridge circuit made the diamond jump (freezing the layout lost the off-grid diamond geometry) | Freezing reproduces every example exactly (a test checks all of them); a pinned diamond is still recognised, a hand-laid ring is left alone |
+| Deleting a part or disconnecting a pin left a one-pin entry in `nets`, turning a valid document invalid | Such entries are removed, like connection lists |
+| Malformed text such as `[}` could hang the path locator (found in review, reproduced) | The scanner makes progress or stops; indexes are built only when something needs a line |
+| Editing from the canvas while the JSON had a syntax error overwrote the text being typed | Edits are refused with a message until the text parses; pending typing is applied first |
+| A pasted API envelope `{ "circuit": … }` broke quick fixes, line numbers and every edit | The circuit is unwrapped for editing and located one level down |
+| Clearing the X or Y field moved the part to 0 and froze the layout | One empty field is ignored; both empty returns the part to automatic placement; values are clamped |
+| Pressing on a wire and dragging neither panned nor did anything but highlight | It pans |
+| Ctrl+C/X/V/A/D suppressed the browser's own shortcut even when there was nothing to act on | Only suppressed when the command acts; paste falls back to the system clipboard where the browser permits |
+| A measurement at `R1.constructor` produced NaN coordinates; `U1.P0.1` was cut at the first dot; pin aliases were ignored | Own-property lookup, first-dot split, aliases resolved |
+| A short id such as `R5` was "corrected" to an unrelated part (`R1`) with a one-click fix | Short ids only suggest case-slips |
+| The validator's cost was not bounded by its limits (a 500-pin bus of 1500 parts took seconds, thousands of bad references more) | Total-pin limit, suggestion budget, linear duplicate detection, early exit at the error cap, warning cap |
+| `12Vdc`, `5Vrms`, `1Meg` were reported as unreadable values | Everyday qualifiers and SPICE `meg` are understood |
 | Ctrl+Z within 600 ms of typing ignored or jumped past the new text (it was not yet in the history) | Pending typing is recorded before undoing |
 
 `render()` and `validate()` never throw any more: an unexpected failure inside a stage comes back as an
@@ -86,10 +98,10 @@ category (it used to hide boards, sensors, displays and connectors).
 
 ### Tests and tooling
 
-- 89 → 158 unit tests: robustness with mutation fuzzing (structural and semantic, 350 cases per run), validation and
+- 89 → 167 unit tests: robustness with mutation fuzzing (structural and semantic, 350 cases per run), validation and
   the path locator, the symbol library (geometry, alias collisions, every type at every rotation), the editor model,
   history, selection, schema conformance, and a performance/quality suite with deterministic ceilings.
-- `npm run smoke`: about 55 browser checks (optional; needs Playwright, which is not a dependency).
+- `npm run smoke`: 64 browser checks (optional; needs Playwright, which is not a dependency).
 - A CI workflow runs the tests and the build on every pull request (Node 20 and 22).
 
 ### Known limitations

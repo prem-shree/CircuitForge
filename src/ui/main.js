@@ -1,6 +1,6 @@
 import './styles.css';
 import { render, validate, listTypes, explainType, explainCircuit } from '../engine.js';
-import { parseJSON } from '../parser/index.js';
+import { parseJSON, isEnvelope, unwrapCircuit } from '../parser/index.js';
 import { formatJSON, clearLayout, setSpacing, EMPTY_CIRCUIT } from '../editor/model.js';
 import { pruneSelection, describeIds } from '../editor/selection.js';
 import { hashText } from '../editor/cache.js';
@@ -26,7 +26,7 @@ const app = {
   canvas: null,
   scene: () => state.result?.scene || null,
   theme: () => (isDark() ? 'dark' : 'light'),
-  toast, update, commit, select, setNet, setHint,
+  toast, update, commit, select, setNet, setHint, sync,
 };
 const canvas = app.canvas = new Canvas(canvasEl, $('#viewport'), {
   onSelect: (ids) => select(ids, { fromCanvas: true }),
@@ -71,11 +71,13 @@ function renderCached(value, text) {
 function update({ fit = false } = {}) {
   const parsed = parseJSON(state.text);
   let errors = [], warnings = [], findings = [];
+  state.syntaxError = parsed.errors.length > 0;
   if (parsed.errors.length) {
     errors = parsed.errors;
     canvas.setStale(true);
   } else {
-    state.circuit = parsed.value;
+    state.wrapped = isEnvelope(parsed.value);
+    state.circuit = unwrapCircuit(parsed.value);
     const r = renderCached(parsed.value, state.text);
     errors = r.errors;
     warnings = r.warnings;
@@ -97,7 +99,7 @@ function update({ fit = false } = {}) {
   const comps = Array.isArray(state.circuit?.components) ? state.circuit.components.length : 0;
   $('#empty-state').hidden = !(comps === 0 && !errors.length);
   state.findings = findings;
-  problems.show(errors, warnings, findings);
+  problems.show(errors, warnings, findings, state.wrapped);
   updateStatus(errors, warnings, findings);
   problems.gutterMarks();
   store.set('cf-last', state.text);
@@ -182,12 +184,23 @@ function setText(text, { record = true, fit = false, label = null, key = null } 
   syncToolbar();
 }
 
+// Bring the parsed circuit up to date with the text (pending typing is applied now) and
+// say whether an edit is safe. Edits are computed from the parsed circuit and then
+// replace the text, so while the text does not parse they must be refused: they
+// would work from the last valid version and overwrite what is being typed.
+function sync() {
+  flushTyping();
+  if (state.syntaxError) toast('Fix the JSON syntax error first: the canvas shows the last valid version.', true);
+  return !state.syntaxError;
+}
+
 // Every edit from the canvas, inspector and commands comes through here: one
 // call, one undo step (or one merged step for repeated edits with the same key).
 function commit(circuit, { label = null, key = null, select: ids = null, fit = false } = {}) {
-  flushTyping();
+  if (!sync()) return false;
   if (ids) { state.selection = [...ids]; canvas.setSelection(state.selection); }
   setText(formatJSON(circuit) + '\n', { label, key, fit });
+  return true;
 }
 
 function restore(text, message) {
@@ -262,7 +275,7 @@ const tools = {
   duplicate: () => commands.duplicate(),
   delete: () => commands.remove(),
   autolayout: () => {
-    if (!state.circuit) return;
+    if (!sync()) return;
     commit(clearLayout(state.circuit), { label: 'Automatic layout', fit: true });
     toast('Automatic layout restored');
   },
@@ -275,7 +288,7 @@ const tools = {
   'zoom-selection': () => commands.zoomToSelection(),
   fit: () => canvas.fit(),
 };
-$('#spacing').addEventListener('change', (e) => { if (state.circuit) commit(setSpacing(state.circuit, e.target.value), { label: 'Change spacing' }); });
+$('#spacing').addEventListener('change', (e) => { if (sync()) commit(setSpacing(state.circuit, e.target.value), { label: 'Change spacing' }); });
 document.addEventListener('click', (e) => {
   const t = e.target.closest('[data-tool]');
   if (t && tools[t.dataset.tool]) tools[t.dataset.tool](e);
@@ -305,8 +318,9 @@ document.addEventListener('keydown', (e) => {
   if (inField || e.altKey) return;
   if (mod) {
     const k = key.toLowerCase();
-    const handled = { a: () => commands.selectAll(), d: () => commands.duplicate(), c: () => commands.copy(), x: () => commands.cut(), v: () => commands.paste() }[k];
-    if (handled) { e.preventDefault(); handled(); }
+    const run = { a: () => commands.selectAll(), d: () => commands.duplicate(), c: () => commands.copy(), x: () => commands.cut(), v: () => commands.paste() }[k];
+    // keep the browser's own copy/paste (of selected text, say) whenever the command does nothing
+    if (run && run() !== false) e.preventDefault();
     return;
   }
   if (key === ' ') { canvas.spaceDown = true; return; } // (no preventDefault: Space must still press a focused button)
@@ -388,9 +402,8 @@ const actions = {
   new: () => loadCircuit(EMPTY_CIRCUIT, 'New circuit'),
   open: () => fileInput.click(),
   format: () => {
-    const p = parseJSON(state.text);
-    if (p.errors.length) return toast('Fix the JSON syntax error first.', true);
-    commit(p.value, { label: 'Format JSON' });
+    if (!sync()) return;
+    commit(state.circuit, { label: 'Format JSON' });
   },
   api: () => $('#api-dialog').showModal(),
   help: () => $('#help-dialog').showModal(),

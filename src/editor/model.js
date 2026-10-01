@@ -2,7 +2,7 @@
 // the JSON stays the single source of truth.
 import { parseRef } from '../parser/index.js';
 import { resolveSymbol, resolvePin } from '../symbol-loader/index.js';
-import { normAngle } from '../utils/geometry.js';
+import { normAngle, snap } from '../utils/geometry.js';
 import { setPath } from '../utils/path.js';
 import { has } from '../utils/safe.js';
 
@@ -62,10 +62,20 @@ export function deleteComponent(circuit, id) {
       return x;
     }).filter((x) => x !== null);
   }
-  if (c.nets && typeof c.nets === 'object' && !Array.isArray(c.nets)) {
-    for (const k of Object.keys(c.nets)) if (Array.isArray(c.nets[k])) c.nets[k] = c.nets[k].filter(keep);
-  }
+  pruneNets(c, keep);
   return c;
+}
+
+// Remove pins from the "nets" form; a net left with fewer than two pins goes (an
+// entry with one pin is invalid), and an empty "nets" object with it.
+function pruneNets(c, keep) {
+  if (!c.nets || typeof c.nets !== 'object' || Array.isArray(c.nets)) return;
+  for (const k of Object.keys(c.nets)) {
+    if (!Array.isArray(c.nets[k])) continue;
+    const refs = c.nets[k].filter(keep);
+    if (refs.length >= 2) c.nets[k] = refs; else delete c.nets[k];
+  }
+  if (!Object.keys(c.nets).length) delete c.nets;
 }
 
 export function renameComponent(circuit, oldId, newId) {
@@ -149,7 +159,7 @@ export function addComponent(circuit, type, { at = null, instances = null } = {}
   return { circuit: c, id };
 }
 
-const snap10 = (v) => Math.round(v / 10) * 10;
+const snap10 = (v) => snap(v, 10);
 
 // Designators for parts that have no reference prefix of their own.
 const RAIL_IDS = { ground: 'GND', net_label: 'NET', junction: 'J' };
@@ -337,9 +347,7 @@ export function disconnectPin(circuit, ref) {
       return x;
     }).filter((x) => x !== null);
   }
-  if (c.nets && typeof c.nets === 'object' && !Array.isArray(c.nets)) {
-    for (const k of Object.keys(c.nets)) if (Array.isArray(c.nets[k])) c.nets[k] = c.nets[k].filter(keep);
-  }
+  pruneNets(c, keep);
   return c;
 }
 

@@ -4,6 +4,8 @@ import { renameComponent, updateComponent, pinLayout, disconnectPin } from '../e
 import { parseValue, formatValue } from '../utils/units.js';
 import { VALUE_UNITS } from '../validator/electrical.js';
 import { describeIds } from '../editor/selection.js';
+import { snap } from '../utils/geometry.js';
+import { MAX_COORD } from '../utils/safe.js';
 import { state, $, esc } from './state.js';
 
 export function initInspector(app) {
@@ -108,7 +110,7 @@ export function initInspector(app) {
   // Form edits become undoable steps; edits to the same field within a moment merge.
   form.addEventListener('change', (e) => {
     const id = state.selection[0];
-    if (state.selection.length !== 1 || !state.circuit) return;
+    if (state.selection.length !== 1 || !app.sync() || !state.circuit) return;
     const name = e.target.name;
     let c = state.circuit;
     let label, key = `field:${name}:${id}`;
@@ -126,10 +128,20 @@ export function initInspector(app) {
     if (name === 'rotation') { c = updateComponent(c, id, { rotation: form.rotation.value === '' ? undefined : Number(form.rotation.value), angle: undefined }); label = `Rotate ${id}`; }
     else if (name === 'mirror') { c = updateComponent(c, id, { mirror: form.mirror.checked || undefined }); label = `Mirror ${id}`; key = null; }
     else if (name === 'x' || name === 'y') {
-      const x = Number(form.x.value), y = Number(form.y.value);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
-      c = pinLayout(c, app.scene().instances, { [id]: { x: Math.round(x / 10) * 10, y: Math.round(y / 10) * 10 } });
-      label = `Move ${id}`;
+      const xs = form.x.value.trim(), ys = form.y.value.trim();
+      if (xs === '' && ys === '') {
+        // both fields cleared: let the automatic layout place this part again
+        c = updateComponent(c, id, { position: undefined });
+        label = `Auto-place ${id}`;
+      } else {
+        // an empty field is "not yet typed", not zero
+        if (xs === '' || ys === '') return;
+        const x = Number(xs), y = Number(ys);
+        if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+        const limit = (v) => Math.max(-MAX_COORD, Math.min(MAX_COORD, snap(v, 10)));
+        c = pinLayout(c, app.scene().instances, { [id]: { x: limit(x), y: limit(y) } });
+        label = `Move ${id}`;
+      }
     } else if (name === 'type' || name === 'value' || name === 'label') { c = updateComponent(c, id, { [name]: form[name].value }); label = `Edit ${name} of ${id}`; }
     else return;
     app.commit(c, { label, key, select: [id] });
