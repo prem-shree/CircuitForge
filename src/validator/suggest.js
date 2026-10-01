@@ -19,11 +19,11 @@ export function levenshtein(a, b) {
 // otherwise every two-letter pin would "look like" every other one.
 const tolerance = (len) => (len <= 2 ? 0 : len <= 4 ? 1 : 2);
 
+export const MAX_NAME_LENGTH = 64; // longer than any real part or pin name: not searched
+
 // The candidate closest to `input` (ignoring case), or null when nothing is
 // close enough. `candidates` may be plain strings or [candidate, result] pairs
 // when several spellings (aliases) map to one answer.
-export const MAX_NAME_LENGTH = 64; // longer than any real part or pin name: not searched
-
 export function closest(input, candidates, maxEdits) {
   const s = String(input ?? '').trim().toLowerCase();
   if (!s || s.length > MAX_NAME_LENGTH) return null;

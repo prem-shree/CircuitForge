@@ -175,6 +175,15 @@ function flushTyping() {
   }
 }
 
+// Put typing that has not reached the history yet there, without rendering it: for callers
+// that are about to replace the document, so that undo can come back to what was typed.
+function recordTyping() {
+  if (!historyTimer) return;
+  clearTimeout(historyTimer);
+  historyTimer = 0;
+  history.push(state.text, { label: 'Edit JSON', key: 'text', selection: state.selection });
+}
+
 function setText(text, { record = true, fit = false, label = null, key = null } = {}) {
   clearTimeout(typingTimer); clearTimeout(historyTimer);
   typingTimer = historyTimer = 0;
@@ -380,8 +389,8 @@ EXAMPLES.forEach((s, i) => {
 // Replace the whole document (File > New, an example). Unlike an edit this must work
 // when the current text does not parse: starting over is the way out of that.
 function loadCircuit(c, label = 'New circuit') {
+  recordTyping();
   select([]);
-  flushTyping();
   setText(formatJSON(c) + '\n', { label, fit: true });
 }
 
@@ -394,8 +403,8 @@ fileInput.addEventListener('change', async () => {
 });
 async function openFile(f) {
   const text = await f.text();
+  recordTyping();
   select([]);
-  flushTyping();
   setText(text, { fit: true, label: `Open ${f.name}` });
   toast(`Opened ${f.name}`);
 }

@@ -27,7 +27,7 @@ export function parseValue(raw) {
   const mega = MEGA.exec(s);
   if (mega) return Number(mega[1]) * 1e6;
   let m = RKM.exec(s);
-  if (m) return (Number(m[1]) + Number('0.' + m[3])) * PREFIX[m[2]];
+  if (m) return (m[1].startsWith('-') ? -1 : 1) * (Math.abs(Number(m[1])) + Number('0.' + m[3])) * PREFIX[m[2]];
   m = PLAIN.exec(s);
   if (!m) return null;
   const n = Number(m[1]);

@@ -18,12 +18,12 @@ export function initCommands(app) {
   // may run after an async clipboard read, when typing could have changed it.
   function pasteSnippet(snippet) {
     if (!app.sync() || !state.circuit) return false;
-    pasteCount++;
-    const step = 40 * pasteCount;
-    // parts that have positions land beside the copy; auto-laid-out circuits place them themselves
+    // parts that have positions land beside the copy (further each time); auto-laid-out circuits place them themselves
+    const step = 40 * (pasteCount + 1);
     const { circuit, ids: added } = pasteSubcircuit(state.circuit, snippet, { x: step, y: step });
     if (!added.length) { app.toast('Nothing to paste: the clipboard holds no parts.', true); return false; }
     if (!app.commit(circuit, { label: `Paste ${describeIds(added)}`, key: null, select: added })) return false;
+    pasteCount++;
     app.toast(`Pasted ${describeIds(added)}`);
     return true;
   }
@@ -81,8 +81,8 @@ export function initCommands(app) {
         (text) => {
           let snippet = null;
           try { snippet = JSON.parse(text); } catch { /* not JSON */ }
-          if (snippet?.format === 'circuitforge-selection') pasteSnippet(snippet);
-          else app.toast('Nothing to paste. Select parts and press Ctrl+C first.', true);
+          if (snippet?.format !== 'circuitforge-selection') return app.toast('Nothing to paste. Select parts and press Ctrl+C first.', true);
+          try { pasteSnippet(snippet); } catch (err) { app.toast(`Could not paste: ${err.message}`, true); }
         },
         // only a refused clipboard read is reported as one
         () => app.toast('Nothing to paste: copy some parts first (the browser did not allow reading the clipboard).', true),

@@ -33,7 +33,7 @@ Node 20 or newer (CI uses 22). The only dependency is `esbuild`, used at build t
 
 **Browser smoke test (optional).** `npm run smoke` builds the site and drives it in headless Chromium: selecting,
 dragging, wiring, undo/redo, the inspector, quick fixes, the component library, a large-circuit drag and export
-(68 checks). Playwright is deliberately not a dependency; install it where you want to run the checks with
+(71 checks). Playwright is deliberately not a dependency; install it where you want to run the checks with
 `npm i --no-save playwright && npx playwright install chromium`. Without it the script prints that and exits 0.
 
 ## Deploying

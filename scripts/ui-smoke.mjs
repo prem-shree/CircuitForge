@@ -323,6 +323,7 @@ const selected = (page) => page.locator('.cf-part.selected').count();
   await z.fill('#library-search', 'resistor');
   await z.press('#library-search', 'Enter');
   check('a non-circuit document refuses edits with a reason', /not a circuit object/.test(await z.textContent('#toast')));
+  check('the refusal is visible, because the dialog closed first', (await z.locator('#library-dialog[open]').count()) === 0 && await z.locator('#toast').isVisible());
 
   // clearing X and Y means "place automatically", never "move to 0"
   const { page: x } = await open(example('08-bjt-amplifier.json'));
@@ -353,6 +354,17 @@ const selected = (page) => page.locator('.cf-part.selected').count();
   const q = await centre(p, '.cf-part[data-id="R1"]');
   await p.mouse.click(q.x, q.y);
   check('Ctrl+C with a part selected is handled', (await pressed(p)) === true);
+
+  // a paste that cannot be applied says so, and does not shift the next successful paste
+  const { page: v, ctx: vctx } = await open(example('01-led-resistor.json'));
+  await vctx.grantPermissions(['clipboard-read', 'clipboard-write']).catch(() => {});
+  const vp = await centre(v, '.cf-part');
+  await v.mouse.click(vp.x, vp.y);
+  await v.keyboard.press('Control+c');
+  await v.evaluate(() => { document.querySelector('#json').value = '{ not json'; document.querySelector('#json').dispatchEvent(new Event('input', { bubbles: true })); });
+  await v.keyboard.press('Control+v');
+  check('pasting into invalid JSON is refused with a reason', /Fix the JSON syntax error/.test(await v.textContent('#toast')));
+  check('and nothing is written', (await text(v)) === '{ not json');
 }
 
 await browser.close();

@@ -316,3 +316,38 @@ test('value parsing cannot be stalled by a hostile string', () => {
   assert.equal(parseValue('1Meg typ'), 1e6);
   assert.equal(parseValue('4.7MEGohm max'), 4.7e6);
 });
+
+test('thousands of identical or hub-and-spoke connections stay linear, one warning each', () => {
+  const comps = Array.from({ length: 50 }, (_, i) => ({ id: `R${i}`, type: 'resistor' }));
+  // 6000 copies of one pair: no quadratic comparison, and every copy after the first is reported once
+  let t0 = Date.now();
+  const same = validate({ components: comps, connections: Array.from({ length: LIMITS.connections }, () => ['R0.1', 'R1.1']) });
+  assert.ok(Date.now() - t0 < 1000, `identical: ${Date.now() - t0} ms`);
+  const dups = same.warnings.filter((w) => w.code === 'DUPLICATE_CONNECTION');
+  assert.ok(dups.length >= 1 && dups.length <= 26, `${dups.length} duplicate warnings`);
+  assert.ok(!same.errors.some((e) => e.code === 'INTERNAL_ERROR'));
+  // a hub: every connection shares R0.1, but the other end differs, so nothing is a duplicate
+  t0 = Date.now();
+  const hub = validate({ components: comps, connections: Array.from({ length: 2000 }, (_, i) => ['R0.1', `R${1 + (i % 49)}.${1 + (i % 2)}`]) });
+  assert.ok(Date.now() - t0 < 1000, `hub: ${Date.now() - t0} ms`);
+  assert.ok(!hub.errors.some((e) => e.code === 'INTERNAL_ERROR'));
+  // each connection that repeats an earlier one is named once, not once per pair it contains
+  const triple = validate({ components: comps, connections: [['R0.1', 'R1.1', 'R2.1'], ['R0.1', 'R1.1', 'R2.1']] }).warnings.filter((w) => w.code === 'DUPLICATE_CONNECTION');
+  assert.equal(triple.length, 1);
+});
+
+test('designators with different trailing numbers are not suggested for each other', () => {
+  const comps = ['RLOAD1', 'RLOAD2', 'C1'].map((id) => ({ id, type: id[0] === 'R' ? 'resistor' : 'capacitor' }));
+  const errs = validate({ components: comps, connections: [['RLOAD3.1', 'C1.1'], ['RLOAD.2', 'C1.2'], ['rload1.1', 'RLOAD2.1']] }).errors.filter((e) => e.code === 'MISSING_COMPONENT');
+  assert.equal(errs.length, 3);
+  assert.equal(errs[0].fix, undefined, 'RLOAD3 is not RLOAD1');
+  assert.equal(errs[2].fix.value, 'RLOAD1.1', 'a case slip is corrected');
+});
+
+test('signs and qualifiers combine in values', () => {
+  assert.equal(parseValue('-4k7'), -4700);
+  assert.equal(parseValue('+4k7'), 4700);
+  assert.equal(parseValue('-4.7k'), -4700);
+  assert.equal(parseValue('-12 V dc'), -12);
+  assert.equal(parseValue('4k7'), 4700);
+});

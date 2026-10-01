@@ -48,9 +48,10 @@ export function initLibrary(app, commands) {
   }
 
   function add(type) {
-    if (!app.sync()) return;
     const sym = resolveSymbol({ type });
+    // close first: a modal dialog sits above the toast that explains a refusal
     $('#library-dialog').close();
+    if (!app.sync()) return;
     const id = commands.addPart(type);
     if (id) app.toast(`Added ${id}. Connect it with the wire tool (W) or in "connections" (pins: ${sym.pinOrder.slice(0, 8).join(', ')}${sym.pinOrder.length > 8 ? ', …' : ''})`);
   }

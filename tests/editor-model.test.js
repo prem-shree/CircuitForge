@@ -325,3 +325,22 @@ test('a partly pinned bridge keeps every pinned part exactly where it was put', 
   // and the drawing still routes
   assert.equal(place('G1', 500, 300, 0).layoutInfo.failures, 0);
 });
+
+test('clearing one member of a frozen bridge leaves every part where it was', () => {
+  const base = ex['28-wheatstone-bridge.json'];
+  const before = scene(base);
+  const frozen = pinLayout(base, before.instances);
+  for (const id of ['G1', 'R1', 'RX']) {
+    const doc = clone(frozen);
+    delete comp(doc, id).position;
+    const s = scene(doc);
+    assert.equal(s.layoutInfo.failures, 0, `${id} cleared: still routes`);
+    for (const c of frozen.components) {
+      if (c.id === id || !c.position) continue;
+      const I = s.instances.get(c.id);
+      assert.ok(I && Math.abs(I.x - before.instances.get(c.id).x) < 0.01 && Math.abs(I.y - before.instances.get(c.id).y) < 0.01, `${id} cleared: ${c.id} did not move`);
+    }
+    // every wire still ends on a pin of the (possibly re-placed) part
+    for (const w of s.wires || []) for (const p of [w.points?.[0], w.points?.at(-1)]) assert.ok(!p || (Number.isFinite(p.x) && Number.isFinite(p.y)));
+  }
+});

@@ -46,6 +46,12 @@ Found by reading the code, probing it with hostile input and mutation-fuzzing th
 | `null` or `42` as the document made Auto layout and the spacing menu throw | Refused with a reason |
 | A "did you mean" fix could rewire to a different part (`R13` → `R1`) | Designators differing by a digit are never suggested; long names are not searched |
 | Ctrl+Z within 600 ms of typing ignored or jumped past the new text (it was not yet in the history) | Pending typing is recorded before undoing |
+| 6000 identical connections took ~2.7 s to check for duplicates | Detection is linear; each repeated connection is reported once |
+| `-4k7` lost its sign (read as +4700) | The sign applies to the whole value |
+| `RLOAD3` was offered `RLOAD1` as a fix | Names differing only in their digits are never suggested for each other |
+| One pinned part of a diamond was re-placed with the others; clearing one member of a frozen bridge moved its neighbours | Pinned angled or cluster parts are placed exactly; a diamond is recognised only if every member still matches its saved geometry |
+| A library refusal ("not a circuit object") was shown behind the open dialog | The dialog closes first, so the reason is visible |
+| A failed paste still advanced the offset of the next one, and a rejected clipboard read raised an unhandled promise rejection | The offset moves only after a successful paste; clipboard errors are reported |
 
 `render()` and `validate()` never throw any more: an unexpected failure inside a stage comes back as an
 `INTERNAL_ERROR` entry, so a bad document cannot take down the page or an API worker.
@@ -106,10 +112,10 @@ category (it used to hide boards, sensors, displays and connectors).
 
 ### Tests and tooling
 
-- 89 → 172 unit tests: robustness with mutation fuzzing (structural and semantic, 350 cases per run), validation and
+- 89 → 176 unit tests: robustness with mutation fuzzing (structural and semantic, 350 cases per run), validation and
   the path locator, the symbol library (geometry, alias collisions, every type at every rotation), the editor model,
   history, selection, schema conformance, and a performance/quality suite with deterministic ceilings.
-- `npm run smoke`: 68 browser checks (optional; needs Playwright, which is not a dependency).
+- `npm run smoke`: 71 browser checks (optional; needs Playwright, which is not a dependency).
 - A CI workflow runs the tests and the build on every pull request (Node 20 and 22).
 
 ### Known limitations

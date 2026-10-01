@@ -85,14 +85,17 @@ function detect(parts, nets, mode) {
   return found.map((b) => geometry(b, mode));
 }
 
-// A frozen diamond is only a diamond if the saved rotations are the ones its geometry
-// gives (within rounding); anything else is the user's own arrangement.
+// A frozen diamond is only a diamond if the saved rotations and the distances between
+// the saved positions are the ones its geometry gives (within the rounding of a saved
+// position, and including its size); anything else is the user's own arrangement.
 function matchesSavedLayout(cluster) {
-  return cluster.members.every((m) => {
-    const saved = m.part.comp.rotation;
-    const d = Math.abs(normAngle(saved) - m.rot) % 360;
+  const [first, ...rest] = cluster.members;
+  const turned = cluster.members.every((m) => {
+    const d = Math.abs(normAngle(m.part.comp.rotation) - m.rot) % 360;
     return Math.min(d, 360 - d) < 0.01;
   });
+  const at = (m) => m.part.comp.position;
+  return turned && rest.every((m) => Math.abs((at(m).x - at(first).x) - (m.x - first.x)) < 0.05 && Math.abs((at(m).y - at(first).y) - (m.y - first.y)) < 0.05);
 }
 
 // Put pin `pa` on corner A and pin `pb` on corner B, centred on the edge, with
